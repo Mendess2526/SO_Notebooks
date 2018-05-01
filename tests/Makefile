@@ -3,7 +3,7 @@ IDIR=../src
 SRCDIR=../src
 SRCODIR=$(SRCDIR)/obj
 TESTODIR=obj
-EXE=test
+EXE=program.test
 CC=gcc
 
 SRC=$(wildcard $(SRCDIR)/*.c)
