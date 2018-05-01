@@ -2,37 +2,36 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include "strings.h"
 
 /* Commands */
 
 typedef struct _command{
-    char* command;
-    size_t commandSize;
+    String command;
     int hasOutput;
-    char* output;
-    size_t outputSize;
+    String output;
 }*Command;
 
-Command command_create(char* command, size_t commandSize, char* output, size_t outputSize){
+Command command_create(String command, String output){
     Command c = (Command) malloc(sizeof(struct _command));
-    c->commandSize = commandSize;
-    c->command = (char*) malloc(sizeof(char)*commandSize);
-    strncpy(c->command,command,commandSize);
-    if(output == NULL || outputSize <= 0){
+    c->command.length = command.length;
+    c->command.s = (char*) malloc(sizeof(char) * command.length);
+    strncpy(c->command.s, command.s, command.length);
+    if(output.s == NULL || output.length <= 0){
         c->hasOutput = 0;
-        c->output = NULL;
+        c->output.s = NULL;
     }else{
         c->hasOutput = 1;
-        c->output = malloc(sizeof(char)*outputSize);
-        strncpy(c->output, output, outputSize);
+        c->output.s = malloc(sizeof(char) * output.length);
+        strncpy(c->output.s, output.s, output.length);
     }
-    c->outputSize = outputSize;
+    c->output.length = output.length;
     return c;
 }
 
 void command_destroy(Command c){
-    free(c->command);
-    free(c->output);
+    free(c->command.s);
+    free(c->output.s);
     free(c);
 }
 
@@ -40,12 +39,12 @@ void command_destroy(Command c){
 
 typedef struct _comment{
     char* comment;
-    size_t commandSize;
+    size_t commentSize;
 }*Comment;
 
 Comment comment_create(char* comment, size_t comSize){
     Comment c = (Comment) malloc(sizeof(struct _comment));
-    c->commandSize = comSize;
+    c->commentSize = comSize;
     c->comment = (char*) malloc(sizeof(char)*comSize);
     strncpy(c->comment, comment, comSize);
     return c;
@@ -78,10 +77,10 @@ Node tree_node_create_comment(char* comment, size_t comSize){
     return n;
 }
 
-Node tree_node_create_command(char* command, size_t commandSize, char* output, size_t outputSize){
+Node tree_node_create_command(String command, String output){
     Node n = (Node) malloc(sizeof(struct _parse_tree_node));
     n->type = COMMAND;
-    n->c.command = command_create(command, commandSize, output, outputSize);
+    n->c.command = command_create(command, output);
     return n;
 }
 
@@ -120,12 +119,13 @@ void parse_tree_add_comment(ParseTree pt, char* comment, int comSize){
     pt->nodes[pt->load++] = tree_node_create_comment(comment, comSize);
 }
 
-void parse_tree_add_command(ParseTree pt, char* command, int commandSize, char* output, int outputSize){
+void parse_tree_add_command(ParseTree pt, String command, String output){
     if(pt->load >= pt->numNodes){
         pt->numNodes *= 2;
         pt->nodes = realloc(pt->nodes, pt->numNodes);
     }
-    pt->nodes[pt->load++] = tree_node_create_command(command, commandSize, output, outputSize);
+    pt->nodes[pt->load++]
+        = tree_node_create_command(command, output);
 }
 
 void parse_tree_destroy(ParseTree pt){
@@ -133,4 +133,34 @@ void parse_tree_destroy(ParseTree pt){
         if(pt->nodes[i]) tree_node_destroy(pt->nodes[i]);
     free(pt->nodes);
     free(pt);
+}
+
+/* Utils */
+char* comment_dump(Comment c){
+    char* comment = (char*) malloc(sizeof(char)* c->commentSize);
+    strncpy(comment, c->comment, c->commentSize);
+    return comment;
+}
+
+char* command_dump(Command c){
+    size_t size = c->commandSize + c->outputSize;
+    char* command = (char*) malloc(sizeof(char) * (size));
+    strncpy(command, c->command, c->commandSize);
+    strncpy(command + c->commandSize, c->output, c->outputSize);
+    return command;
+}
+
+char** parse_tree_dump(ParseTree pt){
+    char** file = (char**) malloc(sizeof(char*)*pt->load+1);
+    file[pt->load] = NULL;
+    for(int i = 0; i < pt->load; i++){
+        switch(pt->nodes[i]->type){
+            case COMMENT: file[i] = comment_dump(pt->nodes[i]->c.comment);
+                          break;
+            case COMMAND: file[i] = command_dump(pt->nodes[i]->c.command);
+                          break;
+            default: break;
+        }
+    }
+    return file;
 }
