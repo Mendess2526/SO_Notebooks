@@ -64,8 +64,6 @@ dkms.conf
 .vscode/
 
 #tests
-*test.c
-tests/*
 null
 
 #LaTeX
