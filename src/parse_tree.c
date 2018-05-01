@@ -38,20 +38,19 @@ void command_destroy(Command c){
 /* Comments */
 
 typedef struct _comment{
-    char* comment;
-    size_t commentSize;
+    String comment;
 }*Comment;
 
-Comment comment_create(char* comment, size_t comSize){
+Comment comment_create(String comment){
     Comment c = (Comment) malloc(sizeof(struct _comment));
-    c->commentSize = comSize;
-    c->comment = (char*) malloc(sizeof(char)*comSize);
-    strncpy(c->comment, comment, comSize);
+    c->comment.length = comment.length;
+    c->comment.s = (char*) malloc(sizeof(char)*comment.length);
+    strncpy(c->comment.s, comment.s, comment.length);
     return c;
 }
 
 void comment_destroy(Comment c){
-    free(c->comment);
+    free(c->comment.s);
     free(c);
 }
 
@@ -70,10 +69,10 @@ typedef struct _parse_tree_node{
     } c;
 }*Node;
 
-Node tree_node_create_comment(char* comment, size_t comSize){
+Node tree_node_create_comment(String comment){
     Node n = (Node) malloc(sizeof(struct _parse_tree_node));
     n->type = COMMENT;
-    n->c.comment = comment_create(comment, comSize);
+    n->c.comment = comment_create(comment);
     return n;
 }
 
@@ -111,12 +110,12 @@ ParseTree parse_tree_create(int size){
     return pt;
 }
 
-void parse_tree_add_comment(ParseTree pt, char* comment, int comSize){
+void parse_tree_add_comment(ParseTree pt, String comment){
     if(pt->load >= pt->numNodes){
         pt->numNodes *= 2;
         pt->nodes = realloc(pt->nodes, pt->numNodes);
     }
-    pt->nodes[pt->load++] = tree_node_create_comment(comment, comSize);
+    pt->nodes[pt->load++] = tree_node_create_comment(comment);
 }
 
 void parse_tree_add_command(ParseTree pt, String command, String output){
@@ -137,16 +136,18 @@ void parse_tree_destroy(ParseTree pt){
 
 /* Utils */
 char* comment_dump(Comment c){
-    char* comment = (char*) malloc(sizeof(char)* c->commentSize);
-    strncpy(comment, c->comment, c->commentSize);
+    char* comment = (char*) malloc(sizeof(char)* c->comment.length+1);
+    strncpy(comment, c->comment.s, c->comment.length);
+    comment[c->comment.length] = '\0';
     return comment;
 }
 
 char* command_dump(Command c){
-    size_t size = c->commandSize + c->outputSize;
-    char* command = (char*) malloc(sizeof(char) * (size));
-    strncpy(command, c->command, c->commandSize);
-    strncpy(command + c->commandSize, c->output, c->outputSize);
+    size_t size = c->command.length + c->output.length;
+    char* command = (char*) malloc(sizeof(char) * (size+1));
+    strncpy(command, c->command.s, c->command.length);
+    strncpy(command + c->command.length, c->output.s, c->output.length);
+    command[size] = '\0';
     return command;
 }
 
