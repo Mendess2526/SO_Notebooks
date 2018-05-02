@@ -1,0 +1,19 @@
+Este comando lista os ficheiros:
+$ ls
+>>>
+coisa.c
+a.out
+batata.c
+<<<
+Agora podemos ordenar estes ficheiros:
+$| sort
+>>>
+a.out
+batata.c
+coisa.c
+<<<
+E escolher o primeiro:
+$| head -1
+>>>
+a.out
+<<<

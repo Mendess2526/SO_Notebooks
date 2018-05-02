@@ -3,15 +3,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include "strings.h"
+#include "../tests/colors.h"
 
 #define OFFSET_STR(s,o)  (s+o)
-#define OUTPUT_START     "\n>>>\n"
-#define OUTPUT_END       "\n<<<\n"
+#define OUTPUT_START     ">>>"
+#define OUTPUT_END       "<<<"
 #define OUTPUT_START_LEN (strlen(OUTPUT_START))
 #define OUTPUT_END_LEN   (strlen(OUTPUT_END))
 
-#define IS_OUTPUT_START(line, len) (len > 2 && 0 == strcmp(line, OUTPUT_START))
-#define IS_OUTPUT_END(line, len)   (len > 2 && 0 == strcmp(line, OUTPUT_START))
+#define IS_OUTPUT_START(line, len) (len > 2 && 0 == strncmp(line, OUTPUT_START, 3))
+#define IS_OUTPUT_END(line, len)   (len > 2 && 0 == strncmp(line, OUTPUT_END, 3))
 
 /* Commands */
 
@@ -96,7 +97,7 @@ void parse_tree_add_command(ParseTree pt, String command){
 }
 
 void parse_tree_append_output(ParseTree pt, String output){
-    tree_node_append_output(pt->nodes[pt->load], output);
+    tree_node_append_output(pt->nodes[pt->load - 1], output);
 }
 
 void parse_tree_add_line(ParseTree pt, char* line, size_t length){
@@ -152,14 +153,14 @@ char* command_dump(Command c){
     strncpy(cmd, c->command.s, c->command.length);
     cmd += c->command.length;
     if(c->hasOutput){
-        strncpy(cmd, OUTPUT_START, OUTPUT_START_LEN);
-        cmd += OUTPUT_START_LEN;
+        strncpy(cmd, "\n"OUTPUT_START"\n", 1 + OUTPUT_START_LEN + 1);
+        cmd += 1 + OUTPUT_START_LEN + 1;
 
         strncpy(cmd, c->output.s, c->output.length);
         cmd += c->output.length;
 
-        strncpy(cmd, OUTPUT_END, OUTPUT_END_LEN);
-        cmd += OUTPUT_END_LEN;
+        strncpy(cmd, "\n"OUTPUT_END, 1 + OUTPUT_END_LEN);
+        cmd += 1 + OUTPUT_END_LEN;
     }
     *cmd = '\0';
     return command;
@@ -192,6 +193,7 @@ static Command command_create(String command){
 }
 
 static void command_append_output(Command c, String s){
+    c->hasOutput = 1;
     if(c->output.length == 0){
         string_init(&(c->output), s.s, s.length);
     }
