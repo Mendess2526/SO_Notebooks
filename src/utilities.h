@@ -3,6 +3,6 @@
 
 #include <unistd.h>
 
-ssize_t readln(int fd, void* buf, ssize_t nbyte);
+char* readln(int fd, size_t* nbyte);
 
 #endif /* UTILITIES_H */
