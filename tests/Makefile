@@ -6,7 +6,7 @@ TESTODIR=obj
 EXE=program.test
 CC=gcc
 
-SRC=$(wildcard $(SRCDIR)/*.c)
+SRC=$(filter-out %main.c, $(wildcard $(SRCDIR)/*.c))
 OBJECTS=$(foreach o, $(patsubst $(SRCDIR)%, $(SRCODIR)%, $(patsubst %.c, %.o, $(SRC))), $o)
 TESTS=$(wildcard *.c)
 TOBJECTS=$(foreach o, $(patsubst %.c, %.o, $(TESTS)), $(TESTODIR)/$o)
@@ -19,7 +19,7 @@ $(SRCODIR)/%.o :
 $(TESTODIR)/%.o : %.c
 	$(CC) $(CFLAGS) -I$(IDIR) -c -o $@ $<
 
-testes: $(OBJECTS) $(TOBJECTS)
+testes: clean $(OBJECTS) $(TOBJECTS)
 	$(CC) $(CFLAGS) $(OBJECTS) $(TOBJECTS) -o $(EXE) -I$(IDIR)
 
 reset:
