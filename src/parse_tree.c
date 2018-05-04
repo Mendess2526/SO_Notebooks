@@ -1,16 +1,15 @@
 #include "parse_tree.h"
+#include "strings.h"
+#include "logger.h"
 
 #include <stdlib.h>
 #include <string.h>
-#include "strings.h"
-#include "../tests/colors.h"
 
 #define OFFSET_STR(s,o)  (s+o)
 #define OUTPUT_START     ">>>"
 #define OUTPUT_END       "<<<"
 #define OUTPUT_START_LEN (strlen(OUTPUT_START))
 #define OUTPUT_END_LEN   (strlen(OUTPUT_END))
-
 #define IS_OUTPUT_START(line, len) (len > 2 && 0 == strncmp(line, OUTPUT_START, 3))
 #define IS_OUTPUT_END(line, len)   (len > 2 && 0 == strncmp(line, OUTPUT_END, 3))
 
@@ -20,6 +19,7 @@ typedef struct _command{
     String command;
     int hasOutput;
     String output;
+    struct _command* pipe;
 }*Command;
 
 /* Comments */
@@ -52,9 +52,13 @@ typedef enum _parse_state{
 
 struct _parse_tree{
     ParseState state;
-    int numNodes;
-    int load;
+    int isCommandChain;
+    int maxNumNodes;
+    int curNumNodes;
     Node* nodes;
+    int* commandNodes;
+    int maxNumIdx;
+    int curNumIdx;
 };
 
 static Command command_create       (String command);
@@ -64,69 +68,113 @@ static void    command_destroy      (Command c);
 static Comment comment_create (String comment);
 static void    comment_destroy(Comment c);
 
-static Node tree_node_create_comment(String comment);
-static Node tree_node_create_command(String command);
+static Node tree_node_create_comment(Comment comment);
+static Node tree_node_create_command(Command command);
 static void tree_node_append_output (Node node, String output);
 static void tree_node_destroy       (Node node);
 
+static int  parse_tree_add_command(ParseTree pt, Command command);
+static void parse_tree_add_comment(ParseTree pt, Comment comment);
 
 ParseTree parse_tree_create(int size){
     ParseTree pt = (ParseTree) malloc(sizeof(struct _parse_tree));
     pt->state = TEXT_MODE;
-    pt->numNodes = size;
-    pt->load = 0;
+    pt->isCommandChain = 0;
+    pt->maxNumNodes = size;
+    pt->curNumNodes = 0;
     pt->nodes = (Node*) malloc(sizeof(struct _parse_tree_node) * size);
+    pt->commandNodes = (int*) malloc(sizeof(int) * size);
+    pt->maxNumIdx = size;
+    pt->curNumIdx = 0;
     return pt;
 }
 
-void parse_tree_add_comment(ParseTree pt, String comment){
-    if(pt->load >= pt->numNodes){
-        pt->numNodes *= 2;
-        pt->nodes = realloc(pt->nodes, sizeof(struct _parse_tree_node) * pt->numNodes);
+void parse_tree_add_comment(ParseTree pt, Comment comment){
+    if(pt->curNumNodes >= pt->maxNumNodes){
+        pt->maxNumNodes *= 2;
+        pt->nodes = realloc(pt->nodes, sizeof(struct _parse_tree_node) * pt->maxNumNodes);
     }
-    pt->nodes[pt->load++] = tree_node_create_comment(comment);
+    pt->nodes[pt->curNumNodes++] = tree_node_create_comment(comment);
 }
 
-void parse_tree_add_command(ParseTree pt, String command){
-    if(pt->load >= pt->numNodes){
-        pt->numNodes *= 2;
-        pt->nodes = realloc(pt->nodes, sizeof(struct _parse_tree_node) * pt->numNodes);
+int parse_tree_add_command(ParseTree pt, Command command){
+    if(pt->curNumNodes >= pt->maxNumNodes){
+        pt->maxNumNodes *= 2;
+        pt->nodes = realloc(pt->nodes, sizeof(struct _parse_tree_node) * pt->maxNumNodes);
     }
-    pt->nodes[pt->load++]
+    pt->nodes[pt->curNumNodes]
         = tree_node_create_command(command);
+
+    if(pt->curNumIdx >= pt->maxNumIdx){
+        pt->maxNumIdx *= 2;
+        pt->commandNodes = realloc(pt->commandNodes, sizeof(int) * pt->maxNumIdx);
+    }
+    pt->commandNodes[pt->curNumIdx++] = pt->curNumNodes;
+
+    return pt->curNumNodes++;
+}
+
+#define LAST_COMMAND_NODE(pt) (pt->nodes[pt->commandNodes[pt->curNumIdx - 1]])
+
+void parse_tree_chain_command(ParseTree pt, Command command){
+    Node n = LAST_COMMAND_NODE(pt);
+    Command cur = NULL;
+    if(n == NULL){
+        LOG_WARNING("Chaining to null node\n");
+    }else if(n->type == N_COMMENT){
+        LOG_WARNING("Chaining to comment node\n");
+    }else if(NULL == (cur = n->c.command)){
+        LOG_WARNING("Chaining to null command\n");
+    }else{
+        while(cur->pipe != NULL) cur = cur->pipe;
+        cur->pipe = command;
+        cur = cur->pipe;
+    }
 }
 
 void parse_tree_append_output(ParseTree pt, String output){
-    tree_node_append_output(pt->nodes[pt->load - 1], output);
+    tree_node_append_output(LAST_COMMAND_NODE(pt), output);
 }
 
-void parse_tree_add_line(ParseTree pt, char* line, size_t length){
+int parse_tree_add_line(ParseTree pt, char* line, size_t length){
+    int finishBatch = -1;
     if(IS_OUTPUT_START(line, length)){
         pt->state = OUTPUT_MODE;
-        return;
+        return finishBatch;
     }
     if(IS_OUTPUT_END(line, length)){
         pt->state = TEXT_MODE;
-        return;
+        return finishBatch;
     }
     String s;
-    string_init(&s, line, length);
     if(pt->state == TEXT_MODE){
         if(*line == '$'){
-            parse_tree_add_command(pt, s);
+            if(line[1] == '|')
+                string_init(&s, line + 2, length - 2);
+            else
+                string_init(&s, line + 1, length - 1);
+
+            Command c = command_create(s);
+            if(line[1] == '|')
+                parse_tree_chain_command(pt, c);
+
+            finishBatch = parse_tree_add_command(pt, c);
         }else{
-            parse_tree_add_comment(pt, s);
+            string_init(&s, line, length);
+            parse_tree_add_comment(pt, comment_create(s));
         }
     }else{
+        string_init(&s, line, length);
         parse_tree_append_output(pt, s);
     }
-    string_free(s);
+    return finishBatch;
 }
 
 void parse_tree_destroy(ParseTree pt){
-    for(int i = 0; i < pt->load; i++)
-        if(pt->nodes[i]) tree_node_destroy(pt->nodes[i]);
+    for(int i = 0; i < pt->curNumNodes; i++)
+        tree_node_destroy(pt->nodes[i]);
     free(pt->nodes);
+    free(pt->commandNodes);
     free(pt);
 }
 
@@ -167,9 +215,9 @@ char* command_dump(Command c){
 }
 
 char** parse_tree_dump(ParseTree pt){
-    char** file = (char**) malloc(sizeof(char*)*pt->load+1);
-    file[pt->load] = NULL;
-    for(int i = 0; i < pt->load; i++){
+    char** file = (char**) malloc(sizeof(char*)*pt->curNumNodes+1);
+    file[pt->curNumNodes] = NULL;
+    for(int i = 0; i < pt->curNumNodes; i++){
         switch(pt->nodes[i]->type){
             case N_COMMENT: file[i] = comment_dump(pt->nodes[i]->c.comment);
                           break;
@@ -185,23 +233,24 @@ char** parse_tree_dump(ParseTree pt){
 
 static Command command_create(String command){
     Command c = (Command) malloc(sizeof(struct _command));
-    string_init(&c->command, command.s, command.length);
+    c->command = command;
     c->hasOutput = 0;
     c->output.s = NULL;
     c->output.length = 0;
+    c->pipe =  NULL;
     return c;
 }
 
 static void command_append_output(Command c, String s){
     c->hasOutput = 1;
-    if(c->output.length == 0){
-        string_init(&(c->output), s.s, s.length);
+    if(c->output.length == 0) c->output = s;
+    else{
+        String newLine = {0,1};
+        char nl = '\n';
+        newLine.s = &nl;
+        string_append(&c->output, newLine);
+        string_append(&c->output, s);
     }
-    int newLength = c->output.length + s.length + 1;
-    c->output.s = realloc(c->output.s, sizeof(char) * (newLength));
-    c->output.s[c->output.length] = '\n';
-    memcpy(c->output.s + c->output.length + 1, s.s, s.length);
-    c->output.length = newLength;
 }
 
 static void command_destroy(Command c){
@@ -212,7 +261,7 @@ static void command_destroy(Command c){
 
 static Comment comment_create(String comment){
     Comment c = (Comment) malloc(sizeof(struct _comment));
-    string_init(&c->comment, comment.s, comment.length);
+    c->comment = comment;
     return c;
 }
 
@@ -221,17 +270,17 @@ static void comment_destroy(Comment c){
     free(c);
 }
 
-static Node tree_node_create_comment(String comment){
+static Node tree_node_create_comment(Comment comment){
     Node n = (Node) malloc(sizeof(struct _parse_tree_node));
     n->type = N_COMMENT;
-    n->c.comment = comment_create(comment);
+    n->c.comment = comment;
     return n;
 }
 
-static Node tree_node_create_command(String command){
+static Node tree_node_create_command(Command command){
     Node n = (Node) malloc(sizeof(struct _parse_tree_node));
     n->type = N_COMMAND;
-    n->c.command = command_create(command);
+    n->c.command = command;
     return n;
 }
 
@@ -248,4 +297,64 @@ static void tree_node_destroy(Node node){
         default: break;
     }
     free(node);
+}
+
+/* ------------------- Printing --------------------- */
+
+static void printCommand(Command c);
+static void printComment(Comment c);
+static void printNode(Node n);
+
+#include "colors.h"
+#include <stdio.h>
+
+void parse_tree_print(ParseTree pt){
+    printf("State: %d\n", pt->state);
+    printf("isCommandChain %d\n", pt->isCommandChain);
+    printf("%d/%d nodes\n", pt->curNumNodes, pt->maxNumNodes);
+    printf("Nodes:\n");
+    for(int i = 0; i<pt->curNumNodes; i++)
+        printNode(pt->nodes[i]);
+}
+
+void printNode(Node n){
+    printf("\tType: %d", n->type);
+    switch(n->type){
+        case N_COMMENT: printComment(n->c.comment);
+                        break;
+        case N_COMMAND: printCommand(n->c.command);
+                        break;
+        default: break;
+    }
+}
+
+void printComment(Comment c){
+    int length = c->comment.length;
+    c->comment.s[length] = '\0';
+    printf(GREEN "\t%s" RESET "\n", c->comment.s);
+    c->comment.length = length;
+}
+void printCommand(Command c){
+    static int notFirst;
+    int length = c->command.length;
+    c->command.s[c->command.length] = '\0';
+    if(notFirst)
+        printf(BLUE "\t\t$%s " RESET, c->command.s);
+    else{
+        printf(BLUE "\t$%s " RESET, c->command.s);
+        notFirst = 1;
+    }
+
+    c->command.length = length;
+    if(c->hasOutput){
+        printf(RED "\n>>>\n");
+        length = c->output.length;
+        c->output.s[c->output.length] = '\0';
+        printf("%s\n", c->output.s);
+        c->output.length = length;
+        printf("<<<\n" RESET);
+    }
+    if(c->pipe) printCommand(c->pipe);
+    else notFirst = 0;
+    printf("\n");
 }
