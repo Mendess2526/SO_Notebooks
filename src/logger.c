@@ -16,18 +16,18 @@ static inline char* paintMessage(char* color, char* message){
     return m;
 }
 
-inline void LOG_FATAL(char* message){
+void LOG_FATAL(char* message){
     char* paintedMsg = paintMessage(RED, message);
     write(2, paintedMsg, strlen(paintedMsg));
     _exit(1);
 }
 
-inline void LOG_CRITICAL(char* message){
+void LOG_CRITICAL(char* message){
     char* paintedMsg = paintMessage(YELLOW, message);
     write(2, paintedMsg, strlen(paintedMsg));
 }
 
-inline void LOG_WARNING(char* message){
+void LOG_WARNING(char* message){
     char* paintedMsg = paintMessage(PURPLE, message);
     write(2, paintedMsg, strlen(paintedMsg));
 }

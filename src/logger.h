@@ -1,10 +1,10 @@
 #ifndef LOGGER_H
 #define LOGGER_H
 
-inline void LOG_FATAL(char* message);
+void LOG_FATAL(char* message);
 
-inline void LOG_CRITICAL(char* message);
+void LOG_CRITICAL(char* message);
 
-inline void LOG_WARNING(char* message);
+void LOG_WARNING(char* message);
 
 #endif /* LOGGER_H */
