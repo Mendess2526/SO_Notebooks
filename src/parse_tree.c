@@ -8,14 +8,15 @@
 #define OFFSET_STR(s,o)  (s+o)
 #define OUTPUT_START     ">>>"
 #define OUTPUT_END       "<<<"
-#define OUTPUT_START_LEN (strlen(OUTPUT_START))
-#define OUTPUT_END_LEN   (strlen(OUTPUT_END))
+#define OUTPUT_START_LEN (1 + strlen(OUTPUT_START) + 1)
+#define OUTPUT_END_LEN   (1 + strlen(OUTPUT_END))
 #define IS_OUTPUT_START(line, len) (len > 2 && 0 == strncmp(line, OUTPUT_START, 3))
 #define IS_OUTPUT_END(line, len)   (len > 2 && 0 == strncmp(line, OUTPUT_END, 3))
 
 /* Commands */
 
 typedef struct _command{
+    int isDependant;
     String command;
     int hasOutput;
     String output;
@@ -61,7 +62,7 @@ struct _parse_tree{
     int curNumIdx;
 };
 
-static Command command_create       (String command);
+static Command command_create       (String command, int isDependant);
 static void    command_append_output(Command c, String s);
 static void    command_destroy      (Command c);
 
@@ -149,14 +150,15 @@ int parse_tree_add_line(ParseTree pt, char* line, size_t length){
     String s;
     if(pt->state == TEXT_MODE){
         if(*line == '$'){
-            if(line[1] == '|')
+            Command c;
+            if(line[1] == '|'){
                 string_init(&s, line + 2, length - 2);
-            else
-                string_init(&s, line + 1, length - 1);
-
-            Command c = command_create(s);
-            if(line[1] == '|')
+                c = command_create(s, 1);
                 parse_tree_chain_command(pt, c);
+            }else{
+                string_init(&s, line + 1, length - 1);
+                c = command_create(s, 0);
+            }
 
             finishBatch = parse_tree_add_command(pt, c);
         }else{
@@ -188,34 +190,41 @@ char* comment_dump(Comment c){
 }
 
 char* command_dump(Command c){
-    size_t size =
-        c->command.length
-        + OUTPUT_START_LEN
-        + c->output.length
-        + OUTPUT_END_LEN
-        + 1;
+    size_t size = 1; // $
+    if(c->isDependant) size += 1; // |
+    size += c->command.length; // Command string
+    if(c->hasOutput) size += OUTPUT_START_LEN // Output
+                        + c->output.length
+                        + OUTPUT_END_LEN;
+    size += 1; // '\0'
 
     char* command = (char*) malloc(sizeof(char) * size);
     char* cmd = command;
 
+    strncpy(cmd, "$", c->command.length);
+    cmd += 1;
+    if(c->isDependant){
+        strncpy(cmd, "|", c->command.length);
+        cmd += 1;
+    }
     strncpy(cmd, c->command.s, c->command.length);
     cmd += c->command.length;
     if(c->hasOutput){
-        strncpy(cmd, "\n"OUTPUT_START"\n", 1 + OUTPUT_START_LEN + 1);
-        cmd += 1 + OUTPUT_START_LEN + 1;
+        strncpy(cmd, "\n"OUTPUT_START"\n", OUTPUT_START_LEN);
+        cmd += OUTPUT_START_LEN;
 
         strncpy(cmd, c->output.s, c->output.length);
         cmd += c->output.length;
 
-        strncpy(cmd, "\n"OUTPUT_END, 1 + OUTPUT_END_LEN);
-        cmd += 1 + OUTPUT_END_LEN;
+        strncpy(cmd, "\n"OUTPUT_END, OUTPUT_END_LEN);
+        cmd += OUTPUT_END_LEN;
     }
     *cmd = '\0';
     return command;
 }
 
 char** parse_tree_dump(ParseTree pt){
-    char** file = (char**) malloc(sizeof(char*)*pt->curNumNodes+1);
+    char** file = (char**) malloc(sizeof(char*) * (pt->curNumNodes + 1));
     file[pt->curNumNodes] = NULL;
     for(int i = 0; i < pt->curNumNodes; i++){
         switch(pt->nodes[i]->type){
@@ -231,9 +240,10 @@ char** parse_tree_dump(ParseTree pt){
 
 /* STATICS */
 
-static Command command_create(String command){
+static Command command_create(String command, int isDependant){
     Command c = (Command) malloc(sizeof(struct _command));
     c->command = command;
+    c->isDependant = isDependant;
     c->hasOutput = 0;
     c->output.s = NULL;
     c->output.length = 0;
@@ -338,12 +348,14 @@ void printCommand(Command c){
     static int notFirst;
     int length = c->command.length;
     c->command.s[c->command.length] = '\0';
+    printf(BLUE);
     if(notFirst)
-        printf(BLUE "\t\t$%s " RESET, c->command.s);
-    else{
-        printf(BLUE "\t$%s " RESET, c->command.s);
+        printf("\t");
+    else
         notFirst = 1;
-    }
+    printf("\t$");
+    if(c->isDependant) printf("|");
+    printf("%s " RESET, c->command.s);
 
     c->command.length = length;
     if(c->hasOutput){
