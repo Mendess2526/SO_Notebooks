@@ -65,6 +65,7 @@ dkms.conf
 
 #tests
 tests/*.nb
+*.test
 src/*.nb
 null
 
