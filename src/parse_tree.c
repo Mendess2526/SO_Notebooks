@@ -18,13 +18,13 @@
 
 /* Commands */
 
-typedef struct _command{
+struct _command{
     int isDependant;
     String command;
     int hasOutput;
     String output;
     struct _command* pipe;
-}*Command;
+};
 
 /* Comments */
 
@@ -65,7 +65,6 @@ struct _parse_tree{
 };
 
 static Command command_create       (String command, int isDependant);
-static void    command_append_output(Command c, String s);
 static void    command_destroy      (Command c);
 
 static Comment comment_create (String comment);
@@ -76,8 +75,10 @@ static Node tree_node_create_command(Command command);
 static void tree_node_append_output (Node node, String output);
 static void tree_node_destroy       (Node node);
 
-static int  parse_tree_add_command(ParseTree pt, Command command);
+static void parse_tree_add_command(ParseTree pt, Command command);
 static void parse_tree_add_comment(ParseTree pt, Comment comment);
+static void parse_tree_chain_command(ParseTree pt, Command command);
+static void parse_tree_append_output(ParseTree pt, String output);
 
 ParseTree parse_tree_create(int size){
     ParseTree pt = (ParseTree) malloc(sizeof(struct _parse_tree));
@@ -89,51 +90,6 @@ ParseTree parse_tree_create(int size){
     pt->commandNodes = intList_create(size);
     pt->batches = intList_create(size);
     return pt;
-}
-
-void parse_tree_add_comment(ParseTree pt, Comment comment){
-    if(pt->curNumNodes >= pt->maxNumNodes){
-        pt->maxNumNodes *= 2;
-        pt->nodes = realloc(pt->nodes, sizeof(struct _parse_tree_node)
-                                     * pt->maxNumNodes);
-    }
-    pt->nodes[pt->curNumNodes++] = tree_node_create_comment(comment);
-}
-
-int parse_tree_add_command(ParseTree pt, Command command){
-    if(pt->curNumNodes >= pt->maxNumNodes){
-        pt->maxNumNodes *= 2;
-        pt->nodes = realloc(pt->nodes, sizeof(struct _parse_tree_node)
-                                     * pt->maxNumNodes);
-    }
-    pt->nodes[pt->curNumNodes]
-        = tree_node_create_command(command);
-
-    intList_append(pt->commandNodes, pt->curNumNodes);
-
-    return pt->curNumNodes++;
-}
-
-#define LAST_COMMAND_NODE(pt) (pt->nodes[intList_last(pt->commandNodes)])
-
-void parse_tree_chain_command(ParseTree pt, Command command){
-    Node n = LAST_COMMAND_NODE(pt);
-    Command cur = NULL;
-    if(n == NULL){
-        LOG_WARNING("Chaining to null node\n");
-    }else if(n->type == N_COMMENT){
-        LOG_WARNING("Chaining to comment node\n");
-    }else if(NULL == (cur = n->c.command)){
-        LOG_WARNING("Chaining to null command\n");
-    }else{
-        while(cur->pipe != NULL) cur = cur->pipe;
-        cur->pipe = command;
-        cur = cur->pipe;
-    }
-}
-
-void parse_tree_append_output(ParseTree pt, String output){
-    tree_node_append_output(LAST_COMMAND_NODE(pt), output);
 }
 
 int parse_tree_add_line(ParseTree pt, char* line, size_t length){
@@ -180,6 +136,132 @@ void parse_tree_destroy(ParseTree pt){
     free(pt->nodes);
     free(pt->commandNodes);
     free(pt);
+}
+
+static void parse_tree_add_comment(ParseTree pt, Comment comment){
+    if(pt->curNumNodes >= pt->maxNumNodes){
+        pt->maxNumNodes *= 2;
+        pt->nodes = realloc(pt->nodes, sizeof(struct _parse_tree_node)
+                                     * pt->maxNumNodes);
+    }
+    pt->nodes[pt->curNumNodes++] = tree_node_create_comment(comment);
+}
+
+static void parse_tree_add_command(ParseTree pt, Command command){
+    if(pt->curNumNodes >= pt->maxNumNodes){
+        pt->maxNumNodes *= 2;
+        pt->nodes = realloc(pt->nodes, sizeof(struct _parse_tree_node)
+                                     * pt->maxNumNodes);
+    }
+    pt->nodes[pt->curNumNodes]
+        = tree_node_create_command(command);
+
+    intList_append(pt->commandNodes, pt->curNumNodes);
+}
+
+#define LAST_COMMAND_NODE(pt) (pt->nodes[intList_last(pt->commandNodes)])
+
+static void parse_tree_chain_command(ParseTree pt, Command command){
+    Node n = LAST_COMMAND_NODE(pt);
+    Command cur = NULL;
+    if(n == NULL){
+        LOG_WARNING("Chaining to null node\n");
+    }else if(n->type == N_COMMENT){
+        LOG_WARNING("Chaining to comment node\n");
+    }else if(NULL == (cur = n->c.command)){
+        LOG_WARNING("Chaining to null command\n");
+    }else{
+        while(cur->pipe != NULL) cur = cur->pipe;
+        cur->pipe = command;
+        cur = cur->pipe;
+    }
+}
+
+static void parse_tree_append_output(ParseTree pt, String output){
+    tree_node_append_output(LAST_COMMAND_NODE(pt), output);
+}
+
+/* Commands */
+
+static Command command_create(String command, int isDependant){
+    Command c = (Command) malloc(sizeof(struct _command));
+    c->command = command;
+    c->isDependant = isDependant;
+    c->hasOutput = 0;
+    c->output.s = NULL;
+    c->output.length = 0;
+    c->pipe =  NULL;
+    return c;
+}
+
+String command_get_command(Command c){
+    return c->command;
+}
+
+void command_append_output(Command c, String s){
+    c->hasOutput = 1;
+    if(c->output.length == 0) c->output = s;
+    else{
+        String newLine = {0,1};
+        char nl = '\n';
+        newLine.s = &nl;
+        string_append(&c->output, newLine);
+        string_append(&c->output, s);
+    }
+}
+
+Command command_pipe(Command c){
+    return c->pipe;
+}
+
+static void command_destroy(Command c){
+    free(c->command.s);
+    free(c->output.s);
+    free(c);
+}
+
+/* Comment */
+
+static Comment comment_create(String comment){
+    Comment c = (Comment) malloc(sizeof(struct _comment));
+    c->comment = comment;
+    return c;
+}
+
+static void comment_destroy(Comment c){
+    free(c->comment.s);
+    free(c);
+}
+
+/* Nodes */
+
+static Node tree_node_create_comment(Comment comment){
+    Node n = (Node) malloc(sizeof(struct _parse_tree_node));
+    n->type = N_COMMENT;
+    n->c.comment = comment;
+    return n;
+}
+
+static Node tree_node_create_command(Command command){
+    Node n = (Node) malloc(sizeof(struct _parse_tree_node));
+    n->type = N_COMMAND;
+    n->c.command = command;
+    return n;
+}
+
+static void tree_node_append_output(Node node, String output){
+    command_append_output(node->c.command, output);
+}
+
+static void tree_node_destroy(Node node){
+    switch(node->type){
+        case N_COMMENT: comment_destroy(node->c.comment);
+                      break;
+        case N_COMMAND: command_destroy(node->c.command);
+                      break;
+        default: break;
+    }
+    free(node);
 }
 
 /* Utils */
@@ -238,77 +320,6 @@ char** parse_tree_dump(ParseTree pt){
         }
     }
     return file;
-}
-
-/* STATICS */
-
-static Command command_create(String command, int isDependant){
-    Command c = (Command) malloc(sizeof(struct _command));
-    c->command = command;
-    c->isDependant = isDependant;
-    c->hasOutput = 0;
-    c->output.s = NULL;
-    c->output.length = 0;
-    c->pipe =  NULL;
-    return c;
-}
-
-static void command_append_output(Command c, String s){
-    c->hasOutput = 1;
-    if(c->output.length == 0) c->output = s;
-    else{
-        String newLine = {0,1};
-        char nl = '\n';
-        newLine.s = &nl;
-        string_append(&c->output, newLine);
-        string_append(&c->output, s);
-    }
-}
-
-static void command_destroy(Command c){
-    free(c->command.s);
-    free(c->output.s);
-    free(c);
-}
-
-static Comment comment_create(String comment){
-    Comment c = (Comment) malloc(sizeof(struct _comment));
-    c->comment = comment;
-    return c;
-}
-
-static void comment_destroy(Comment c){
-    free(c->comment.s);
-    free(c);
-}
-
-static Node tree_node_create_comment(Comment comment){
-    Node n = (Node) malloc(sizeof(struct _parse_tree_node));
-    n->type = N_COMMENT;
-    n->c.comment = comment;
-    return n;
-}
-
-static Node tree_node_create_command(Command command){
-    Node n = (Node) malloc(sizeof(struct _parse_tree_node));
-    n->type = N_COMMAND;
-    n->c.command = command;
-    return n;
-}
-
-static void tree_node_append_output(Node node, String output){
-    command_append_output(node->c.command, output);
-}
-
-static void tree_node_destroy(Node node){
-    switch(node->type){
-        case N_COMMENT: comment_destroy(node->c.comment);
-                      break;
-        case N_COMMAND: command_destroy(node->c.command);
-                      break;
-        default: break;
-    }
-    free(node);
 }
 
 /* ------------------- Printing --------------------- */
