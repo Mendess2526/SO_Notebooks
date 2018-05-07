@@ -10,8 +10,10 @@
 #define OUTPUT_END       "<<<"
 #define OUTPUT_START_LEN (1 + strlen(OUTPUT_START) + 1)
 #define OUTPUT_END_LEN   (1 + strlen(OUTPUT_END))
-#define IS_OUTPUT_START(line, len) (len > 2 && 0 == strncmp(line, OUTPUT_START, 3))
-#define IS_OUTPUT_END(line, len)   (len > 2 && 0 == strncmp(line, OUTPUT_END, 3))
+#define IS_OUTPUT_START(line, len) \
+    (len > 2 && 0 == strncmp(line, OUTPUT_START, 3))
+#define IS_OUTPUT_END(line, len)   \
+    (len > 2 && 0 == strncmp(line, OUTPUT_END, 3))
 
 /* Commands */
 
@@ -93,7 +95,8 @@ ParseTree parse_tree_create(int size){
 void parse_tree_add_comment(ParseTree pt, Comment comment){
     if(pt->curNumNodes >= pt->maxNumNodes){
         pt->maxNumNodes *= 2;
-        pt->nodes = realloc(pt->nodes, sizeof(struct _parse_tree_node) * pt->maxNumNodes);
+        pt->nodes = realloc(pt->nodes, sizeof(struct _parse_tree_node)
+                                     * pt->maxNumNodes);
     }
     pt->nodes[pt->curNumNodes++] = tree_node_create_comment(comment);
 }
@@ -101,14 +104,16 @@ void parse_tree_add_comment(ParseTree pt, Comment comment){
 int parse_tree_add_command(ParseTree pt, Command command){
     if(pt->curNumNodes >= pt->maxNumNodes){
         pt->maxNumNodes *= 2;
-        pt->nodes = realloc(pt->nodes, sizeof(struct _parse_tree_node) * pt->maxNumNodes);
+        pt->nodes = realloc(pt->nodes, sizeof(struct _parse_tree_node)
+                                     * pt->maxNumNodes);
     }
     pt->nodes[pt->curNumNodes]
         = tree_node_create_command(command);
 
     if(pt->curNumIdx >= pt->maxNumIdx){
         pt->maxNumIdx *= 2;
-        pt->commandNodes = realloc(pt->commandNodes, sizeof(int) * pt->maxNumIdx);
+        pt->commandNodes = realloc(pt->commandNodes, sizeof(int)
+                                                   * pt->maxNumIdx);
     }
     pt->commandNodes[pt->curNumIdx++] = pt->curNumNodes;
 
