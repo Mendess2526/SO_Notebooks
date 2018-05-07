@@ -1,6 +1,7 @@
 #include "parse_tree.h"
 #include "strings.h"
 #include "logger.h"
+#include "list.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -59,9 +60,8 @@ struct _parse_tree{
     int maxNumNodes;
     int curNumNodes;
     Node* nodes;
-    int* commandNodes;
-    int maxNumIdx;
-    int curNumIdx;
+    IntList commandNodes;
+    IntList batches;
 };
 
 static Command command_create       (String command, int isDependant);
@@ -86,9 +86,8 @@ ParseTree parse_tree_create(int size){
     pt->maxNumNodes = size;
     pt->curNumNodes = 0;
     pt->nodes = (Node*) malloc(sizeof(struct _parse_tree_node) * size);
-    pt->commandNodes = (int*) malloc(sizeof(int) * size);
-    pt->maxNumIdx = size;
-    pt->curNumIdx = 0;
+    pt->commandNodes = intList_create(size);
+    pt->batches = intList_create(size);
     return pt;
 }
 
@@ -110,17 +109,12 @@ int parse_tree_add_command(ParseTree pt, Command command){
     pt->nodes[pt->curNumNodes]
         = tree_node_create_command(command);
 
-    if(pt->curNumIdx >= pt->maxNumIdx){
-        pt->maxNumIdx *= 2;
-        pt->commandNodes = realloc(pt->commandNodes, sizeof(int)
-                                                   * pt->maxNumIdx);
-    }
-    pt->commandNodes[pt->curNumIdx++] = pt->curNumNodes;
+    intList_append(pt->commandNodes, pt->curNumNodes);
 
     return pt->curNumNodes++;
 }
 
-#define LAST_COMMAND_NODE(pt) (pt->nodes[pt->commandNodes[pt->curNumIdx - 1]])
+#define LAST_COMMAND_NODE(pt) (pt->nodes[intList_last(pt->commandNodes)])
 
 void parse_tree_chain_command(ParseTree pt, Command command){
     Node n = LAST_COMMAND_NODE(pt);
@@ -144,6 +138,7 @@ void parse_tree_append_output(ParseTree pt, String output){
 
 int parse_tree_add_line(ParseTree pt, char* line, size_t length){
     int finishBatch = -1;
+    if(!line) return intList_last(pt->batches);
     if(IS_OUTPUT_START(line, length)){
         pt->state = OUTPUT_MODE;
         return finishBatch;
@@ -163,9 +158,11 @@ int parse_tree_add_line(ParseTree pt, char* line, size_t length){
             }else{
                 string_init(&s, line + 1, length - 1);
                 c = command_create(s, 0);
+                finishBatch = intList_last(pt->batches);
+                intList_append(pt->batches, pt->curNumNodes);
             }
 
-            finishBatch = parse_tree_add_command(pt, c);
+            parse_tree_add_command(pt, c);
         }else{
             string_init(&s, line, length);
             parse_tree_add_comment(pt, comment_create(s));
@@ -328,8 +325,14 @@ void parse_tree_print(ParseTree pt){
     printf("isCommandChain %d\n", pt->isCommandChain);
     printf("%d/%d nodes\n", pt->curNumNodes, pt->maxNumNodes);
     printf("Nodes:\n");
-    for(int i = 0; i<pt->curNumNodes; i++)
+    for(int i = 0, btc = 0; i<pt->curNumNodes; i++){
+        int isFirst = intList_index(pt->batches, btc) == i;
+        if(isFirst){
+            printf(YELLOW "fst" RESET);
+            btc++;
+        }
         printNode(pt->nodes[i]);
+    }
 }
 
 void printNode(Node n){
@@ -349,6 +352,13 @@ void printComment(Comment c){
     printf(GREEN "\t%s" RESET "\n", c->comment.s);
     c->comment.length = length;
 }
+
+char* mystrndup(char* str, size_t len){
+    char* s = malloc(sizeof(char) * len);
+    strncpy(s, str, len);
+    return s;
+}
+
 void printCommand(Command c){
     static int notFirst;
     int length = c->command.length;
@@ -358,20 +368,27 @@ void printCommand(Command c){
         printf("\t");
     else
         notFirst = 1;
+
     printf("\t$");
     if(c->isDependant) printf("|");
     printf("%s " RESET, c->command.s);
 
+    printf("\n");
     c->command.length = length;
     if(c->hasOutput){
-        printf(RED "\n>>>\n");
+        printf(RED "\t\t>>>\n");
         length = c->output.length;
         c->output.s[c->output.length] = '\0';
-        printf("%s\n", c->output.s);
+        char* out = mystrndup(c->output.s, c->output.length);
+        char* tk = strtok(out,"\n");
+        do{
+            printf("\t\t%s\n", tk);
+            tk = strtok(NULL, "\n");
+        }while(tk && tk[0]!='\n');
+        free(out);
         c->output.length = length;
-        printf("<<<\n" RESET);
+        printf("\t\t<<<\n" RESET);
     }
     if(c->pipe) printCommand(c->pipe);
     else notFirst = 0;
-    printf("\n");
 }
