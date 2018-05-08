@@ -156,7 +156,7 @@ static void parse_tree_add_command(ParseTree pt, Command command){
     pt->nodes[pt->curNumNodes]
         = tree_node_create_command(command);
 
-    intList_append(pt->commandNodes, pt->curNumNodes);
+    intList_append(pt->commandNodes, pt->curNumNodes++);
 }
 
 #define LAST_COMMAND_NODE(pt) (pt->nodes[intList_last(pt->commandNodes)])
@@ -250,7 +250,8 @@ static Node tree_node_create_command(Command command){
 }
 
 static void tree_node_append_output(Node node, String output){
-    command_append_output(node->c.command, output);
+    if(node->type == N_COMMENT) LOG_WARNING("Appending output to comment node");
+    else command_append_output(node->c.command, output);
 }
 
 static void tree_node_destroy(Node node){
