@@ -1,11 +1,12 @@
 #include "parse_tree.h"
 #include "utilities.h"
+#include "pipes.h"
 
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdio.h>
 
-void execBatch(Command c){
+void execBatch(Command c,int * mypipe){
     if(!fork()){
         //TODO magic
     }
@@ -21,12 +22,15 @@ int main(int argc, char** argv){
     int fd = open(argv[1],O_RDONLY);
     char* buff;
     size_t len;
-    int** pipes; //TODO aloca isto
+    Pipes mypipes = pipes_create(20); //TODO aloca isto 
     ParseTree pt = parse_tree_create(20);
     while(NULL != (buff = readln(fd, &len))){
+
         int batch = parse_tree_add_line(pt, buff, len);
-        if(batch != -1)
-            execBatch(parse_tree_get_batch(pt, batch));
+        if(batch != -1){
+            pipes_append(mypipes);
+            execBatch(parse_tree_get_batch(pt, batch),pipes_last(mypipes));
+        }
     }
     //TODO read pipes
 
