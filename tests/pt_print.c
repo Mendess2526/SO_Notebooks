@@ -28,10 +28,8 @@ int main(int argc, char** argv){
         return 0;
     }
     for(int i = 1; i < argc; i++){
-        char filename[30];
-        printf(GREEN "Notebook %s" RESET "\n", argv[i]);
-        sprintf(filename, "notebook %s", argv[i]);
-        parse_and_dump(filename);
+        printf(GREEN "%s" RESET "\n", argv[i]);
+        parse_and_dump(argv[i]);
     }
     return 0;
 }
