@@ -6,15 +6,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define OFFSET_STR(s,o)  (s+o)
 #define OUTPUT_START     ">>>"
 #define OUTPUT_END       "<<<"
 #define OUTPUT_START_LEN (1 + strlen(OUTPUT_START) + 1)
 #define OUTPUT_END_LEN   (1 + strlen(OUTPUT_END))
 #define IS_OUTPUT_START(line, len) \
-    (len > 2 && 0 == strncmp(line, OUTPUT_START, 3))
+    ((len) > 2 && 0 == strncmp(line, OUTPUT_START, 3))
 #define IS_OUTPUT_END(line, len)   \
-    (len > 2 && 0 == strncmp(line, OUTPUT_END, 3))
+    ((len) > 2 && 0 == strncmp(line, OUTPUT_END, 3))
 
 /* Commands */
 
@@ -56,12 +55,10 @@ typedef enum _parse_state{
 
 struct _parse_tree{
     ParseState state;
-    int isCommandChain;
-    int maxNumNodes;
-    int curNumNodes;
-    Node* nodes;
-    IntList commandNodes;
-    IntList batches;
+    int maxNumNodes;      /**< The maximum number of current nodes */
+    int curNumNodes;      /**< The current number of nodes */
+    Node* nodes;          /**< The node array */
+    IntList batches;      /**< */
 };
 
 static Command command_create       (String command, int isDependant);
@@ -72,29 +69,25 @@ static void    comment_destroy(Comment c);
 
 static Node tree_node_create_comment(Comment comment);
 static Node tree_node_create_command(Command command);
-static void tree_node_append_output (Node node, String output);
 static void tree_node_destroy       (Node node);
 
 static void parse_tree_add_command(ParseTree pt, Command command);
 static void parse_tree_add_comment(ParseTree pt, Comment comment);
 static void parse_tree_chain_command(ParseTree pt, Command command);
-static void parse_tree_append_output(ParseTree pt, String output);
 
 ParseTree parse_tree_create(int size){
     ParseTree pt = (ParseTree) malloc(sizeof(struct _parse_tree));
     pt->state = TEXT_MODE;
-    pt->isCommandChain = 0;
     pt->maxNumNodes = size;
     pt->curNumNodes = 0;
     pt->nodes = (Node*) malloc(sizeof(struct _parse_tree_node) * size);
-    pt->commandNodes = intList_create(size);
     pt->batches = intList_create(size);
     return pt;
 }
 
 int parse_tree_add_line(ParseTree pt, char* line, size_t length){
     int finishBatch = -1;
-    if(!line) return intList_last(pt->batches);
+    if(!line) return intList_len(pt->batches);
     if(IS_OUTPUT_START(line, length)){
         pt->state = OUTPUT_MODE;
         return finishBatch;
@@ -114,7 +107,7 @@ int parse_tree_add_line(ParseTree pt, char* line, size_t length){
             }else{
                 string_init(&s, line + 1, length - 1);
                 c = command_create(s, 0);
-                finishBatch = intList_last(pt->batches);
+                finishBatch = intList_len(pt->batches);
                 intList_append(pt->batches, pt->curNumNodes);
             }
 
@@ -123,9 +116,6 @@ int parse_tree_add_line(ParseTree pt, char* line, size_t length){
             string_init(&s, line, length);
             parse_tree_add_comment(pt, comment_create(s));
         }
-    }else{
-        string_init(&s, line, length);
-        parse_tree_append_output(pt, s);
     }
     return finishBatch;
 }
@@ -134,7 +124,7 @@ void parse_tree_destroy(ParseTree pt){
     for(int i = 0; i < pt->curNumNodes; i++)
         tree_node_destroy(pt->nodes[i]);
     free(pt->nodes);
-    free(pt->commandNodes);
+    intList_free(pt->batches);
     free(pt);
 }
 
@@ -153,16 +143,16 @@ static void parse_tree_add_command(ParseTree pt, Command command){
         pt->nodes = realloc(pt->nodes, sizeof(struct _parse_tree_node)
                                      * pt->maxNumNodes);
     }
-    pt->nodes[pt->curNumNodes]
+    pt->nodes[pt->curNumNodes++]
         = tree_node_create_command(command);
-
-    intList_append(pt->commandNodes, pt->curNumNodes++);
 }
 
-#define LAST_COMMAND_NODE(pt) (pt->nodes[intList_last(pt->commandNodes)])
+static Node last_command_node(ParseTree pt){
+    return pt->nodes[intList_last(pt->batches)];
+}
 
 static void parse_tree_chain_command(ParseTree pt, Command command){
-    Node n = LAST_COMMAND_NODE(pt);
+    Node n = last_command_node(pt);
     Command cur = NULL;
     if(n == NULL){
         LOG_WARNING("Chaining to null node\n");
@@ -173,12 +163,7 @@ static void parse_tree_chain_command(ParseTree pt, Command command){
     }else{
         while(cur->pipe != NULL) cur = cur->pipe;
         cur->pipe = command;
-        cur = cur->pipe;
     }
-}
-
-static void parse_tree_append_output(ParseTree pt, String output){
-    tree_node_append_output(LAST_COMMAND_NODE(pt), output);
 }
 
 /* Commands */
@@ -202,9 +187,8 @@ void command_append_output(Command c, String s){
     c->hasOutput = 1;
     if(c->output.length == 0) c->output = s;
     else{
-        String newLine = {0,1};
-        char nl = '\n';
-        newLine.s = &nl;
+        String newLine;
+        string_init(&newLine, "\n", 1);
         string_append(&c->output, newLine);
         string_append(&c->output, s);
     }
@@ -247,11 +231,6 @@ static Node tree_node_create_command(Command command){
     n->type = N_COMMAND;
     n->c.command = command;
     return n;
-}
-
-static void tree_node_append_output(Node node, String output){
-    if(node->type == N_COMMENT) LOG_WARNING("Appending output to comment node");
-    else command_append_output(node->c.command, output);
 }
 
 static void tree_node_destroy(Node node){
@@ -334,7 +313,6 @@ static void printNode(Node n);
 
 void parse_tree_print(ParseTree pt){
     printf("State: %d\n", pt->state);
-    printf("isCommandChain %d\n", pt->isCommandChain);
     printf("%d/%d nodes\n", pt->curNumNodes, pt->maxNumNodes);
     printf("Nodes:\n");
     for(int i = 0, btc = 0; i<pt->curNumNodes; i++){
@@ -359,7 +337,7 @@ void printNode(Node n){
 }
 
 void printComment(Comment c){
-    int length = c->comment.length;
+    size_t length = c->comment.length;
     c->comment.s[length] = '\0';
     printf(GREEN "\t%s" RESET "\n", c->comment.s);
     c->comment.length = length;
@@ -373,7 +351,7 @@ char* mystrndup(char* str, size_t len){
 
 void printCommand(Command c){
     static int notFirst;
-    int length = c->command.length;
+    size_t length = c->command.length;
     c->command.s[c->command.length] = '\0';
     printf(BLUE);
     if(notFirst)
