@@ -12,6 +12,8 @@ int intList_index(IntList l, int idx);
 
 int intList_last(IntList l);
 
+int intList_len(IntList l);
+
 void intList_free(IntList l);
 
 #endif /* LIST_H */
