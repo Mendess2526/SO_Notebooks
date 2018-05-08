@@ -14,7 +14,7 @@ $(ODIR)/%o :
 program: $(OBJECTS)
 	$(CC) $(CFLAGS) $(OBJECTS) -o $(EXE)
 
-reset:
+notebooks:
 	cp ../notebooks/*.nb .
 
 clean:
