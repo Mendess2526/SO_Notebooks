@@ -29,6 +29,10 @@ int intList_index(IntList l, int idx){
     return l->array[idx];
 }
 
+int intList_len(IntList l){
+    return l->load;
+}
+
 int intList_last(IntList l){
     if(l->load == 0) return -1;
     return l->array[l->load - 1];
