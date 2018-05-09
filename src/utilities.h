@@ -5,4 +5,6 @@
 
 char* readln(int fd, size_t* nbyte);
 
+char** words(char *string, int len);
+
 #endif /* UTILITIES_H */

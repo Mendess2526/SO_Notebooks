@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 char* readln(int fd, size_t* nbyte){
     size_t size = 0;
@@ -25,3 +26,24 @@ char* readln(int fd, size_t* nbyte){
     *nbyte = size;
     return buff;
 }
+
+char** words(char *string, int len){
+    char *command = malloc(sizeof(char) * len);
+    strncpy(command, string, len);
+    int argc = 5;
+    char **argv = malloc(argc*sizeof(char *));
+    int i=0;
+    char *token = strtok(command," ");
+    do{
+        if(!(i<argc))
+            argv = realloc(argv,(argc*=2)*sizeof(char *));
+
+        argv[i++] = token;
+
+        token = strtok(NULL," ");
+    }while(token);
+    argv[i] = NULL;
+    return argv;
+}
+
+
