@@ -21,6 +21,8 @@ void parse_tree_print(ParseTree pt);
 
 String command_get_command(Command c);
 
+int command_get_chained_num(Command c);
+
 void command_append_output(Command c, String s);
 
 Command command_pipe(Command c);

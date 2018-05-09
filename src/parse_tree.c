@@ -198,6 +198,15 @@ Command command_pipe(Command c){
     return c->pipe;
 }
 
+int command_get_chained_num(Command c){
+    int i = 0;
+    while(c){
+        c = c->pipe;
+        i++;
+    }
+    return i;
+}
+
 static void command_destroy(Command c){
     free(c->command.s);
     free(c->output.s);
