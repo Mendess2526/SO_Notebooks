@@ -1,6 +1,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <stdlib.h>
+
+typedef struct _pipes* Pipes;
 
 struct _pipes{
     int** pipes;
@@ -8,13 +11,13 @@ struct _pipes{
     int load;
 };
 
-pipess pipes_create(int size){
+Pipes pipes_create(int size){
     if(size < 1) size = 20;
-    pipess p = (Pipes) malloc(sizeof(struct _pipes));
+    Pipes p = (Pipes) malloc(sizeof(struct _pipes));
     p->size = size;
     p->load = 0;
     p->pipes = (int**) malloc(sizeof(int*) * size);
-    return l;
+    return p;
 }
 
 void pipes_append(Pipes p){
@@ -23,7 +26,9 @@ void pipes_append(Pipes p){
         p->size *= 2;
         p->pipes = realloc(p->pipes, sizeof(int*) * p->size);
     }
-    p->pipes[p->load++] = (int *) malloc(sizeof(int) * 2);
+    p->pipes[p->load] = (int *) malloc(sizeof(int) * 2);
+    pipe(p->pipes[p->load++]);
+
 }
 
 int* pipes_index(Pipes p, int idx){
@@ -31,7 +36,7 @@ int* pipes_index(Pipes p, int idx){
 }
 
 int* pipes_last(Pipes p){
-    if(p->load == 0) return -1;
+    if(p->load == 0) return NULL;
     return p->pipes[p->load - 1];
 }
 

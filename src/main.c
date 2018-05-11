@@ -28,11 +28,11 @@ int main(int argc, char** argv){
 
         int batch = parse_tree_add_line(pt, buff, len);
         if(batch != -1){
-            pipes_append(mypipes);
+            pipes_append(mypipes,batch);
             execBatch(parse_tree_get_batch(pt, batch),pipes_last(mypipes));
         }
     }
-    //TODO read pipes
+    
 
     close(fd);
     char** dump = parse_tree_dump(pt);

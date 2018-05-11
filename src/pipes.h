@@ -1,7 +1,7 @@
 #ifndef PIPES_H
 #define PIPES_H
 
-typedef struct _list* Pipes;
+typedef struct _pipes * Pipes;
 
 Pipes pipes_create(int size);
 
