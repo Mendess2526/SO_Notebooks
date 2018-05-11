@@ -120,6 +120,15 @@ int parse_tree_add_line(ParseTree pt, char* line, size_t length){
     return finishBatch;
 }
 
+Command parse_tree_get_batch(ParseTree pt, int batch){
+    Node n = pt->nodes[intList_index(pt->batches, batch)];
+    if(n->type == N_COMMENT){
+        LOG_WARNING("Comment node is not a batch\n");
+        return NULL;
+    }
+    return n->c.command;
+}
+
 void parse_tree_destroy(ParseTree pt){
     for(int i = 0; i < pt->curNumNodes; i++)
         tree_node_destroy(pt->nodes[i]);
