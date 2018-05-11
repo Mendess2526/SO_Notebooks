@@ -1,16 +1,11 @@
 #include "parse_tree.h"
 #include "utilities.h"
 #include "pipes.h"
+#include "execBatch.h"
 
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdio.h>
-
-void execBatch(Command c,int * mypipe){
-    if(!fork()){
-        //TODO magic
-    }
-}
 
 int main(int argc, char** argv){
     if(argc < 2){
