@@ -21,7 +21,6 @@ Pipes pipes_create(int size){
 }
 
 void pipes_append(Pipes p){
-	
     if(p->load >= p->size){
         p->size *= 2;
         p->pipes = realloc(p->pipes, sizeof(int*) * p->size);

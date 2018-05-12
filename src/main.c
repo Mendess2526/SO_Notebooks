@@ -34,8 +34,10 @@ int main(int argc, char** argv){
     char** dump = parse_tree_dump(pt);
     fd = creat(argv[1],O_CREAT);
     int i = 0;
-    while(dump[i])
-        write(fd,dump,strlen(dump[i++]));
-
+    while(dump[i]){
+        write(fd,dump[i], strlen(dump[i]));
+        write(fd,"\n",1);
+        free(dump[i++]);
+    }
     return 0;
 }
