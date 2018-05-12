@@ -5,7 +5,7 @@ typedef struct _pipes * Pipes;
 
 Pipes pipes_create(int size);
 
-void pipes_append(Pipes p, int val);
+void pipes_append(Pipes p);
 
 int* pipes_index(Pipes p, int idx);
 

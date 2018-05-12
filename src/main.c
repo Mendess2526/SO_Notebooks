@@ -23,7 +23,7 @@ int main(int argc, char** argv){
 
         int batch = parse_tree_add_line(pt, buff, len);
         if(batch != -1){
-            pipes_append(mypipes,batch);
+            pipes_append(mypipes);
             execBatch(parse_tree_get_batch(pt, batch), pipes_last(mypipes));
         }
     }
