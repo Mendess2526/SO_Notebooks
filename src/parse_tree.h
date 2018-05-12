@@ -23,6 +23,8 @@ String command_get_command(Command c);
 
 int command_get_chained_num(Command c);
 
+int command_get_dependency(Command c);
+
 void command_append_output(Command c, String s);
 
 Command command_pipe(Command c);

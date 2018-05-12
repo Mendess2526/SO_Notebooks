@@ -2,9 +2,11 @@
 #include "strings.h"
 #include "logger.h"
 #include "list.h"
+#include "utilities.h"
 
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #define OUTPUT_START     ">>>"
 #define OUTPUT_END       "<<<"
@@ -18,7 +20,7 @@
 /* Commands */
 
 struct _command{
-    int isDependant;
+    int dependency;
     String command;
     int hasOutput;
     String output;
@@ -58,10 +60,10 @@ struct _parse_tree{
     int maxNumNodes;      /**< The maximum number of current nodes */
     int curNumNodes;      /**< The current number of nodes */
     Node* nodes;          /**< The node array */
-    IntList batches;      /**< */
+    IntList batches;      /**< The indexes of the batches */
 };
 
-static Command command_create       (String command, int isDependant);
+static Command command_create       (String command, int dependency);
 static void    command_destroy      (Command c);
 
 static Comment comment_create (String comment);
@@ -74,6 +76,7 @@ static void tree_node_destroy       (Node node);
 static void parse_tree_add_command(ParseTree pt, Command command);
 static void parse_tree_add_comment(ParseTree pt, Comment comment);
 static void parse_tree_chain_command(ParseTree pt, Command command);
+static int  parse_tree_parse_command(ParseTree pt, char* line, size_t length);
 
 ParseTree parse_tree_create(int size){
     ParseTree pt = (ParseTree) malloc(sizeof(struct _parse_tree));
@@ -96,23 +99,11 @@ int parse_tree_add_line(ParseTree pt, char* line, size_t length){
         pt->state = TEXT_MODE;
         return finishBatch;
     }
-    String s;
     if(pt->state == TEXT_MODE){
         if(*line == '$'){
-            Command c;
-            if(line[1] == '|'){
-                string_init(&s, line + 2, length - 2);
-                c = command_create(s, 1);
-                parse_tree_chain_command(pt, c);
-            }else{
-                string_init(&s, line + 1, length - 1);
-                c = command_create(s, 0);
-                finishBatch = intList_len(pt->batches);
-                intList_append(pt->batches, pt->curNumNodes);
-            }
-
-            parse_tree_add_command(pt, c);
+            finishBatch = parse_tree_parse_command(pt, line + 1, length - 1);
         }else{
+            String s;
             string_init(&s, line, length);
             parse_tree_add_comment(pt, comment_create(s));
         }
@@ -175,12 +166,37 @@ static void parse_tree_chain_command(ParseTree pt, Command command){
     }
 }
 
+static int parse_tree_parse_command(ParseTree pt, char* line, size_t length){
+    int finishBatch = -1;
+    Command c;
+    String s;
+    if(line[0] == '|'){
+        string_init(&s, line + 1, length - 1);
+        c = command_create(s, 1);
+        parse_tree_chain_command(pt, c);
+    }else if(isdigit(line[0])){
+        char* tail;
+        int dep = strtol(line, &tail, 10);
+        string_init(&s, tail + 1, length - ((tail + 1) - line));
+        c = command_create(s, dep);
+    }else{
+        string_init(&s, line, length);
+        c = command_create(s, 0);
+        finishBatch = intList_len(pt->batches);
+        intList_append(pt->batches, pt->curNumNodes);
+    }
+
+    parse_tree_add_command(pt, c);
+
+    return finishBatch;
+}
+
 /* Commands */
 
-static Command command_create(String command, int isDependant){
+static Command command_create(String command, int dependency){
     Command c = (Command) malloc(sizeof(struct _command));
     c->command = command;
-    c->isDependant = isDependant;
+    c->dependency = dependency;
     c->hasOutput = 0;
     c->output.s = NULL;
     c->output.length = 0;
@@ -214,6 +230,10 @@ int command_get_chained_num(Command c){
         i++;
     }
     return i;
+}
+
+int command_get_dependency(Command c){
+    return c->dependency;
 }
 
 static void command_destroy(Command c){
@@ -273,7 +293,8 @@ char* comment_dump(Comment c){
 
 char* command_dump(Command c){
     size_t size = 1; // $
-    if(c->isDependant) size += 1; // |
+    if(c->dependency) size += 1; // |
+    if(c->dependency > 1) size += 12; // dep num
     size += c->command.length; // Command string
     if(c->hasOutput) size += OUTPUT_START_LEN // Output
                         + c->output.length
@@ -285,7 +306,13 @@ char* command_dump(Command c){
 
     strncpy(cmd, "$", c->command.length);
     cmd += 1;
-    if(c->isDependant){
+    if(c->dependency){
+        if(c->dependency > 1){
+           char num[12];
+           size_t len = int2string(c->dependency, num, 12);
+           strncpy(cmd, num, len);
+           cmd += len;
+        }
         strncpy(cmd, "|", c->command.length);
         cmd += 1;
     }
@@ -378,7 +405,8 @@ void printCommand(Command c){
         notFirst = 1;
 
     printf("\t$");
-    if(c->isDependant) printf("|");
+    if(c->dependency > 1) printf("%d", c->dependency);
+    if(c->dependency) printf("|");
     printf("%s " RESET, c->command.s);
 
     printf("\n");
