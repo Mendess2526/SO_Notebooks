@@ -1,19 +1,37 @@
 #ifndef LIST_H
 #define LIST_H
 
+#include <stdlib.h>
+#include <unistd.h>
 
-typedef struct _list* IntList;
+typedef struct _list* IdxList;
 
-IntList intList_create(int size);
+IdxList idx_list_create(size_t size);
 
-void intList_append(IntList l, int val);
+void idx_list_append(IdxList l, size_t val);
 
-int intList_index(IntList l, int idx);
+ssize_t idx_list_index(IdxList l, size_t idx);
 
-int intList_last(IntList l);
+size_t idx_list_last(IdxList l);
 
-int intList_len(IntList l);
+size_t idx_list_len(IdxList l);
 
-void intList_free(IntList l);
+void idx_list_free(IdxList l);
+
+
+
+typedef struct _ptr_list* PtrList;
+
+PtrList ptr_list_create(size_t size);
+
+void ptr_list_append(PtrList l, void* val);
+
+void* ptr_list_index(PtrList l, size_t idx);
+
+void* ptr_list_last(PtrList l);
+
+size_t ptr_list_len(PtrList l);
+
+void ptr_list_free(PtrList l);
 
 #endif /* LIST_H */
