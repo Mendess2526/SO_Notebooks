@@ -20,19 +20,18 @@ int main(int argc, char** argv){
     Pipes mypipes = pipes_create(20);
     ParseTree pt = parse_tree_create(20);
     while(NULL != (buff = readln(fd, &len))){
-
         int batch = parse_tree_add_line(pt, buff, len);
         if(batch != -1){
             pipes_append(mypipes);
             execBatch(parse_tree_get_batch(pt, batch), pipes_last(mypipes));
         }
     }
+    close(fd);
 
     //TODO ler os pipes e prencher os batches correspondentes
 
-    close(fd);
-    char** dump = parse_tree_dump(pt);
     fd = creat(argv[1], 0644);
+    char** dump = parse_tree_dump(pt);
     int i = 0;
     while(dump[i]){
         write(fd, dump[i], strlen(dump[i]));
