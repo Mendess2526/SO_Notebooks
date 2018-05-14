@@ -22,9 +22,10 @@
 struct _command{
     int dependency;
     String command;
-    int hasOutput;
     String output;
-    struct _command* pipe;
+    IdxList dependants;
+    Command pipe;
+    Command prev;
 };
 
 /* Comments */
@@ -61,7 +62,7 @@ struct _parse_tree{
     IdxList batches; /**< The indexes of the batches */
 };
 
-static Command command_create       (String command, int dependency);
+static Command command_create       (Command prev, String command, int dependency);
 static void    command_destroy      (Command c);
 
 static Comment comment_create (String comment);
@@ -150,6 +151,9 @@ static void parse_tree_chain_command(ParseTree pt, Command command){
     }else{
         while(cur->pipe != NULL) cur = cur->pipe;
         cur->pipe = command;
+        for(int backI = command->dependency; backI > 1 && cur; --backI, cur = cur->prev);
+        if(!cur) LOG_FATAL("Invalid dependency\n"); //TODO print bad line?
+        idx_list_append(cur->dependants, command->dependency);
     }
 }
 
@@ -159,16 +163,17 @@ static int parse_tree_parse_command(ParseTree pt, char* line, size_t length){
     String s;
     if(line[0] == '|'){
         string_init(&s, line + 1, length - 1);
-        c = command_create(s, 1);
+        c = command_create(last_command_node(pt)->c.command, s, 1);
         parse_tree_chain_command(pt, c);
     }else if(isdigit(line[0])){
         char* tail;
         int dep = strtol(line, &tail, 10);
         string_init(&s, tail + 1, length - ((tail + 1) - line));
-        c = command_create(s, dep);
+        c = command_create(last_command_node(pt)->c.command, s, dep);
+        parse_tree_chain_command(pt, c);
     }else{
         string_init(&s, line, length);
-        c = command_create(s, 0);
+        c = command_create(NULL, s, 0);
         finishBatch = idx_list_len(pt->batches);
         idx_list_append(pt->batches, ptr_list_len(pt->nodes));
     }
@@ -180,14 +185,15 @@ static int parse_tree_parse_command(ParseTree pt, char* line, size_t length){
 
 /* Commands */
 
-static Command command_create(String command, int dependency){
+static Command command_create(Command prev, String command, int dependency){
     Command c = (Command) malloc(sizeof(struct _command));
     c->command = command;
     c->dependency = dependency;
-    c->hasOutput = 0;
     c->output.s = NULL;
     c->output.length = 0;
+    c->dependants = idx_list_create(10);
     c->pipe =  NULL;
+    c->prev = prev;
     return c;
 }
 
@@ -196,7 +202,6 @@ String command_get_command(Command c){
 }
 
 void command_append_output(Command c, String s){
-    c->hasOutput = 1;
     if(c->output.length == 0) c->output = s;
     else{
         String newLine;
@@ -223,9 +228,13 @@ int command_get_dependency(Command c){
     return c->dependency;
 }
 
+IdxList command_get_dependants(Command c){
+    return c->dependants;
+}
+
 static void command_destroy(Command c){
-    free(c->command.s);
-    free(c->output.s);
+    string_free(c->command);
+    string_free(c->output);
     free(c);
 }
 
@@ -238,7 +247,7 @@ static Comment comment_create(String comment){
 }
 
 static void comment_destroy(Comment c){
-    free(c->comment.s);
+    string_free(c->comment);
     free(c);
 }
 
@@ -283,7 +292,7 @@ char* command_dump(Command c){
     if(c->dependency) size += 1; // |
     if(c->dependency > 1) size += 12; // dep num
     size += c->command.length; // Command string
-    if(c->hasOutput) size += OUTPUT_START_LEN // Output
+    if(c->output.s) size += OUTPUT_START_LEN // Output
                         + c->output.length
                         + OUTPUT_END_LEN;
     size += 1; // '\0'
@@ -305,7 +314,7 @@ char* command_dump(Command c){
     }
     strncpy(cmd, c->command.s, c->command.length);
     cmd += c->command.length;
-    if(c->hasOutput){
+    if(c->output.s){
         strncpy(cmd, "\n"OUTPUT_START"\n", OUTPUT_START_LEN);
         cmd += OUTPUT_START_LEN;
 
@@ -402,8 +411,8 @@ void printCommand(Command c){
     printf("%s " RESET, c->command.s);
 
     printf("\n");
-    c->command.length = length;
-    if(c->hasOutput){
+    c->command.length = length; // Fix cheating
+    if(c->output.s){
         printf(RED "\t\t>>>\n");
         length = c->output.length;
         c->output.s[c->output.length] = '\0';
@@ -417,6 +426,11 @@ void printCommand(Command c){
         c->output.length = length;
         printf("\t\t<<<\n" RESET);
     }
+    printf("\t\t");
+    for(size_t i = 0; i < idx_list_len(c->dependants); i++){
+        printf(RED "%ld " RESET, idx_list_index(c->dependants, i));
+    }
+    printf("\n");
     if(c->pipe) printCommand(c->pipe);
     else notFirst = 0;
 }

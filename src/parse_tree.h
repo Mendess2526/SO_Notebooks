@@ -2,6 +2,7 @@
 #define PARSE_TREE_H
 
 #include "strings.h"
+#include "list.h"
 
 typedef struct _parse_tree * ParseTree;
 
@@ -26,6 +27,8 @@ int command_get_chained_num(Command c);
 int command_get_dependency(Command c);
 
 void command_append_output(Command c, String s);
+
+IdxList command_get_dependants(Command c);
 
 Command command_pipe(Command c);
 

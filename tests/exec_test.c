@@ -10,6 +10,7 @@ int main(){
     ParseTree pt = parse_tree_create(3);
     parse_tree_add_line(pt, "$ ls", 4);
     parse_tree_add_line(pt, "$| sort", 7);
+    parse_tree_add_line(pt, "$2| head -1", 11);
     parse_tree_print(pt);
     int pp[2];
     pipe(pp);
