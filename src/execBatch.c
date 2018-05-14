@@ -15,19 +15,26 @@ void execBatch(Command c, int* pipfd){
     Pipes inPipes = pipes_create((chainedNum - 1));
     Pipes outPipes = pipes_create(chainedNum);
 
-    for(int i = 0; c; c = command_pipe(c), i++){
+    Command cur = c;
+    for(int i = 0; cur; cur = command_pipe(cur), i++){
         if(i > 0) pipes_append(inPipes);
         pipes_append(outPipes);
 
-        execCommand(c, i, inPipes, outPipes);
+        execCommand(cur, i, inPipes, outPipes);
     }
-    for(int i = 0; i < chainedNum; i++){
+    cur = c;
+    for(int i = 0; i < chainedNum && cur; i++, cur = command_pipe(cur)){
         int n;
         char buf[1024] = {0};
         while((n = read(pipes_index(outPipes, i)[0], buf, 1024)) > 0){ // Read cmd output
             write(pipfd[1], buf, n); // Write to parent pipe for storage
-            if(i < (chainedNum - 1))
-                write(pipes_index(inPipes, i)[1], buf, n); // Write to next cmd in chain
+            if(i < (chainedNum - 1)){
+                IdxList deps = command_get_dependants(cur);
+                for(size_t dep = 0; dep < idx_list_len(deps); dep++){ // Foreach command that depends
+                    int offset = i + idx_list_index(deps, dep) - 1;
+                    write(pipes_index(inPipes, offset)[1], buf, n); // Write to dep cmd in chain
+                }
+            }
         }
         wait(NULL); //TODO figure out why this is needed
         write(pipfd[1], "\0", 1); // Write the separated '\0'

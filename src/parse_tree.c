@@ -2,9 +2,11 @@
 #include "strings.h"
 #include "logger.h"
 #include "list.h"
+#include "utilities.h"
 
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #define OUTPUT_START     ">>>"
 #define OUTPUT_END       "<<<"
@@ -18,11 +20,12 @@
 /* Commands */
 
 struct _command{
-    int isDependant;
+    int dependency;
     String command;
-    int hasOutput;
     String output;
-    struct _command* pipe;
+    IdxList dependants;
+    Command pipe;
+    Command prev;
 };
 
 /* Comments */
@@ -55,13 +58,11 @@ typedef enum _parse_state{
 
 struct _parse_tree{
     ParseState state;
-    int maxNumNodes;      /**< The maximum number of current nodes */
-    int curNumNodes;      /**< The current number of nodes */
-    Node* nodes;          /**< The node array */
-    IntList batches;      /**< */
+    PtrList nodes;   /**< The node array */
+    IdxList batches; /**< The indexes of the batches */
 };
 
-static Command command_create       (String command, int isDependant);
+static Command command_create       (Command prev, String command, int dependency);
 static void    command_destroy      (Command c);
 
 static Comment comment_create (String comment);
@@ -74,20 +75,19 @@ static void tree_node_destroy       (Node node);
 static void parse_tree_add_command(ParseTree pt, Command command);
 static void parse_tree_add_comment(ParseTree pt, Comment comment);
 static void parse_tree_chain_command(ParseTree pt, Command command);
+static int  parse_tree_parse_command(ParseTree pt, char* line, size_t length);
 
 ParseTree parse_tree_create(int size){
     ParseTree pt = (ParseTree) malloc(sizeof(struct _parse_tree));
     pt->state = TEXT_MODE;
-    pt->maxNumNodes = size;
-    pt->curNumNodes = 0;
-    pt->nodes = (Node*) malloc(sizeof(struct _parse_tree_node) * size);
-    pt->batches = intList_create(size);
+    pt->nodes = ptr_list_create(size);
+    pt->batches = idx_list_create(size);
     return pt;
 }
 
 int parse_tree_add_line(ParseTree pt, char* line, size_t length){
     int finishBatch = -1;
-    if(!line) return intList_len(pt->batches);
+    if(!line) return idx_list_len(pt->batches);
     if(IS_OUTPUT_START(line, length)){
         pt->state = OUTPUT_MODE;
         return finishBatch;
@@ -96,23 +96,11 @@ int parse_tree_add_line(ParseTree pt, char* line, size_t length){
         pt->state = TEXT_MODE;
         return finishBatch;
     }
-    String s;
     if(pt->state == TEXT_MODE){
         if(*line == '$'){
-            Command c;
-            if(line[1] == '|'){
-                string_init(&s, line + 2, length - 2);
-                c = command_create(s, 1);
-                parse_tree_chain_command(pt, c);
-            }else{
-                string_init(&s, line + 1, length - 1);
-                c = command_create(s, 0);
-                finishBatch = intList_len(pt->batches);
-                intList_append(pt->batches, pt->curNumNodes);
-            }
-
-            parse_tree_add_command(pt, c);
+            finishBatch = parse_tree_parse_command(pt, line + 1, length - 1);
         }else{
+            String s;
             string_init(&s, line, length);
             parse_tree_add_comment(pt, comment_create(s));
         }
@@ -121,7 +109,8 @@ int parse_tree_add_line(ParseTree pt, char* line, size_t length){
 }
 
 Command parse_tree_get_batch(ParseTree pt, int batch){
-    Node n = pt->nodes[intList_index(pt->batches, batch)];
+    Node n = ptr_list_index(pt->nodes, idx_list_index(pt->batches, batch));
+    if(!n) LOG_WARNING("Invalid node index\n");
     if(n->type == N_COMMENT){
         LOG_WARNING("Comment node is not a batch\n");
         return NULL;
@@ -130,34 +119,24 @@ Command parse_tree_get_batch(ParseTree pt, int batch){
 }
 
 void parse_tree_destroy(ParseTree pt){
-    for(int i = 0; i < pt->curNumNodes; i++)
-        tree_node_destroy(pt->nodes[i]);
+    size_t len = ptr_list_len(pt->nodes);
+    for(size_t i = 0; i < len; i++)
+        tree_node_destroy(ptr_list_index(pt->nodes, i));
     free(pt->nodes);
-    intList_free(pt->batches);
+    idx_list_free(pt->batches);
     free(pt);
 }
 
 static void parse_tree_add_comment(ParseTree pt, Comment comment){
-    if(pt->curNumNodes >= pt->maxNumNodes){
-        pt->maxNumNodes *= 2;
-        pt->nodes = realloc(pt->nodes, sizeof(struct _parse_tree_node)
-                                     * pt->maxNumNodes);
-    }
-    pt->nodes[pt->curNumNodes++] = tree_node_create_comment(comment);
+    ptr_list_append(pt->nodes, tree_node_create_comment(comment));
 }
 
 static void parse_tree_add_command(ParseTree pt, Command command){
-    if(pt->curNumNodes >= pt->maxNumNodes){
-        pt->maxNumNodes *= 2;
-        pt->nodes = realloc(pt->nodes, sizeof(struct _parse_tree_node)
-                                     * pt->maxNumNodes);
-    }
-    pt->nodes[pt->curNumNodes++]
-        = tree_node_create_command(command);
+    ptr_list_append(pt->nodes, tree_node_create_command(command));
 }
 
 static Node last_command_node(ParseTree pt){
-    return pt->nodes[intList_last(pt->batches)];
+    return ptr_list_index(pt->nodes, idx_list_last(pt->batches));
 }
 
 static void parse_tree_chain_command(ParseTree pt, Command command){
@@ -172,19 +151,49 @@ static void parse_tree_chain_command(ParseTree pt, Command command){
     }else{
         while(cur->pipe != NULL) cur = cur->pipe;
         cur->pipe = command;
+        for(int backI = command->dependency; backI > 1 && cur; --backI, cur = cur->prev);
+        if(!cur) LOG_FATAL("Invalid dependency\n"); //TODO print bad line?
+        idx_list_append(cur->dependants, command->dependency);
     }
+}
+
+static int parse_tree_parse_command(ParseTree pt, char* line, size_t length){
+    int finishBatch = -1;
+    Command c;
+    String s;
+    if(line[0] == '|'){
+        string_init(&s, line + 1, length - 1);
+        c = command_create(last_command_node(pt)->c.command, s, 1);
+        parse_tree_chain_command(pt, c);
+    }else if(isdigit(line[0])){
+        char* tail;
+        int dep = strtol(line, &tail, 10);
+        string_init(&s, tail + 1, length - ((tail + 1) - line));
+        c = command_create(last_command_node(pt)->c.command, s, dep);
+        parse_tree_chain_command(pt, c);
+    }else{
+        string_init(&s, line, length);
+        c = command_create(NULL, s, 0);
+        finishBatch = idx_list_len(pt->batches);
+        idx_list_append(pt->batches, ptr_list_len(pt->nodes));
+    }
+
+    parse_tree_add_command(pt, c);
+
+    return finishBatch;
 }
 
 /* Commands */
 
-static Command command_create(String command, int isDependant){
+static Command command_create(Command prev, String command, int dependency){
     Command c = (Command) malloc(sizeof(struct _command));
     c->command = command;
-    c->isDependant = isDependant;
-    c->hasOutput = 0;
+    c->dependency = dependency;
     c->output.s = NULL;
     c->output.length = 0;
+    c->dependants = idx_list_create(10);
     c->pipe =  NULL;
+    c->prev = prev;
     return c;
 }
 
@@ -193,7 +202,6 @@ String command_get_command(Command c){
 }
 
 void command_append_output(Command c, String s){
-    c->hasOutput = 1;
     if(c->output.length == 0) c->output = s;
     else{
         String newLine;
@@ -216,9 +224,17 @@ int command_get_chained_num(Command c){
     return i;
 }
 
+int command_get_dependency(Command c){
+    return c->dependency;
+}
+
+IdxList command_get_dependants(Command c){
+    return c->dependants;
+}
+
 static void command_destroy(Command c){
-    free(c->command.s);
-    free(c->output.s);
+    string_free(c->command);
+    string_free(c->output);
     free(c);
 }
 
@@ -231,7 +247,7 @@ static Comment comment_create(String comment){
 }
 
 static void comment_destroy(Comment c){
-    free(c->comment.s);
+    string_free(c->comment);
     free(c);
 }
 
@@ -273,9 +289,10 @@ char* comment_dump(Comment c){
 
 char* command_dump(Command c){
     size_t size = 1; // $
-    if(c->isDependant) size += 1; // |
+    if(c->dependency) size += 1; // |
+    if(c->dependency > 1) size += 12; // dep num
     size += c->command.length; // Command string
-    if(c->hasOutput) size += OUTPUT_START_LEN // Output
+    if(c->output.s) size += OUTPUT_START_LEN // Output
                         + c->output.length
                         + OUTPUT_END_LEN;
     size += 1; // '\0'
@@ -285,13 +302,19 @@ char* command_dump(Command c){
 
     strncpy(cmd, "$", c->command.length);
     cmd += 1;
-    if(c->isDependant){
+    if(c->dependency){
+        if(c->dependency > 1){
+           char num[12];
+           size_t len = int2string(c->dependency, num, 12);
+           strncpy(cmd, num, len);
+           cmd += len;
+        }
         strncpy(cmd, "|", c->command.length);
         cmd += 1;
     }
     strncpy(cmd, c->command.s, c->command.length);
     cmd += c->command.length;
-    if(c->hasOutput){
+    if(c->output.s){
         strncpy(cmd, "\n"OUTPUT_START"\n", OUTPUT_START_LEN);
         cmd += OUTPUT_START_LEN;
 
@@ -306,13 +329,15 @@ char* command_dump(Command c){
 }
 
 char** parse_tree_dump(ParseTree pt){
-    char** file = (char**) malloc(sizeof(char*) * (pt->curNumNodes + 1));
-    file[pt->curNumNodes] = NULL;
-    for(int i = 0; i < pt->curNumNodes; i++){
-        switch(pt->nodes[i]->type){
-            case N_COMMENT: file[i] = comment_dump(pt->nodes[i]->c.comment);
+    size_t numNodes = ptr_list_len(pt->nodes);
+    char** file = (char**) malloc(sizeof(char*) * (numNodes + 1));
+    file[numNodes] = NULL;
+    for(size_t i = 0; i < numNodes; i++){
+        Node n = ptr_list_index(pt->nodes, i);
+        switch(n->type){
+            case N_COMMENT: file[i] = comment_dump(n->c.comment);
                           break;
-            case N_COMMAND: file[i] = command_dump(pt->nodes[i]->c.command);
+            case N_COMMAND: file[i] = command_dump(n->c.command);
                           break;
             default: break;
         }
@@ -330,16 +355,19 @@ static void printNode(Node n);
 #include <stdio.h>
 
 void parse_tree_print(ParseTree pt){
+    size_t len = ptr_list_len(pt->nodes);
     printf("State: %d\n", pt->state);
-    printf("%d/%d nodes\n", pt->curNumNodes, pt->maxNumNodes);
+    printf("%ld nodes\n", len);
     printf("Nodes:\n");
-    for(int i = 0, btc = 0; i<pt->curNumNodes; i++){
-        int isFirst = intList_index(pt->batches, btc) == i;
+    for(size_t i = 0, btc = 0; i<len; i++){
+        ssize_t idx = idx_list_index(pt->batches, btc);
+        if(idx < 0) LOG_WARNING("Invalid index accessed during print\n");
+        size_t isFirst = (size_t) idx == i;
         if(isFirst){
             printf(YELLOW "fst" RESET);
             btc++;
         }
-        printNode(pt->nodes[i]);
+        printNode(ptr_list_index(pt->nodes, i));
     }
 }
 
@@ -378,12 +406,13 @@ void printCommand(Command c){
         notFirst = 1;
 
     printf("\t$");
-    if(c->isDependant) printf("|");
+    if(c->dependency > 1) printf("%d", c->dependency);
+    if(c->dependency) printf("|");
     printf("%s " RESET, c->command.s);
 
     printf("\n");
-    c->command.length = length;
-    if(c->hasOutput){
+    c->command.length = length; // Fix cheating
+    if(c->output.s){
         printf(RED "\t\t>>>\n");
         length = c->output.length;
         c->output.s[c->output.length] = '\0';
@@ -397,6 +426,11 @@ void printCommand(Command c){
         c->output.length = length;
         printf("\t\t<<<\n" RESET);
     }
+    printf("\t\t");
+    for(size_t i = 0; i < idx_list_len(c->dependants); i++){
+        printf(RED "%ld " RESET, idx_list_index(c->dependants, i));
+    }
+    printf("\n");
     if(c->pipe) printCommand(c->pipe);
     else notFirst = 0;
 }

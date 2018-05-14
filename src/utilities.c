@@ -46,4 +46,25 @@ char** words(char *string, int len){
     return argv;
 }
 
+static inline size_t countDigits(int n){
+    size_t count = 0;
+    while(n != 0){
+        n /= 10;
+        ++count;
+    }
+    return count;
+}
+
+size_t int2string(int num, char* string, size_t len){
+    size_t r = countDigits(num);
+    if(r >= len) return 0;
+    ssize_t i = r-1;
+    for(; i >= 0; i--){
+        string[i] = '0' + num % 10;
+        num /= 10;
+    }
+    return r;
+}
+
+
 
