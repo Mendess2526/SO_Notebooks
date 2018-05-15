@@ -62,6 +62,10 @@ struct _parse_tree{
     IdxList batches; /**< The indexes of the batches */
 };
 
+/** Global variable to count the number of lines */
+static int LINE_NUMBER;
+static String CURRENT_LINE;
+
 static Command command_create       (String command, int dependency);
 static void    command_destroy      (Command c);
 
@@ -87,6 +91,8 @@ ParseTree parse_tree_create(int size){
 
 int parse_tree_add_line(ParseTree pt, char* line, size_t length){
     int finishBatch = -1;
+    LINE_NUMBER++;
+    string_init(&CURRENT_LINE, line, length);
     if(!line) return idx_list_len(pt->batches);
     if(IS_OUTPUT_START(line, length)){
         pt->state = OUTPUT_MODE;
@@ -105,6 +111,7 @@ int parse_tree_add_line(ParseTree pt, char* line, size_t length){
             parse_tree_add_comment(pt, comment_create(s));
         }
     }
+    string_free(CURRENT_LINE);
     return finishBatch;
 }
 
@@ -143,19 +150,33 @@ static void parse_tree_chain_command(ParseTree pt, Command command){
     Node n = last_command_node(pt);
     Command cur = NULL;
     if(n == NULL){
-        LOG_WARNING("Chaining to null node\n");
+        LOG_PARSE_ERROR(CURRENT_LINE,
+                LINE_NUMBER,
+                "First command can't depend on any others",
+                CURRENT_LINE.s[1] == '|' ? 1 : 2);
+        _exit(1);
     }else if(n->type == N_COMMENT){
         LOG_WARNING("Chaining to comment node\n");
     }else if(NULL == (cur = n->c.command)){
         LOG_WARNING("Chaining to null command\n");
     }else{
         int depoffset = command->dependency;
-        while(depoffset-- && cur->pipe != NULL) cur = cur->pipe; //TODO ideia de ontem a noite que abandonei
+        Command dep = n->c.command;
+        while(cur->pipe != NULL){
+            if(depoffset == 1){
+                dep = dep->pipe;
+            }else{
+                depoffset--;
+            }
+            cur = cur->pipe;
+        }
+        if(depoffset > 1){
+            LOG_PARSE_ERROR(CURRENT_LINE, LINE_NUMBER, "Impossible dependency", 1);
+            _exit(1);
+        }
         cur->pipe = command;
         command->prev = cur;
-        for(int backI = command->dependency; backI > 1 && cur; --backI, cur = cur->prev);
-        if(!cur) LOG_FATAL("Invalid dependency\n"); //TODO print bad line?
-        idx_list_append(cur->dependants, command->dependency);
+        idx_list_append(dep->dependants, command->dependency);
     }
 }
 

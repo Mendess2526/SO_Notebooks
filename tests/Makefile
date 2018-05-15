@@ -22,7 +22,7 @@ $(SRCODIR)/%.o :
 
 all: clean $(TEXES)
 
-reset:
+notebooks:
 	cp ../notebooks/*.nb .
 
 clean:

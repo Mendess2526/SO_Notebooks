@@ -65,6 +65,3 @@ size_t int2string(int num, char* string, size_t len){
     }
     return r;
 }
-
-
-
