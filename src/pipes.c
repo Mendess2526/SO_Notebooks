@@ -33,6 +33,10 @@ int* pipes_index(Pipes p, size_t idx){
     return p->pipes[idx];
 }
 
+size_t pipes_len(Pipes p){
+    return p->load;
+}
+
 int* pipes_last(Pipes p){
     if(p->load == 0) return NULL;
     return p->pipes[p->load - 1];
