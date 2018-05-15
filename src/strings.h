@@ -11,7 +11,7 @@ typedef struct string{
 
 void string_init(String* s, char* string, size_t length);
 
-void string_append(String *dest, String src);
+void string_append(String* dest, String src);
 
 void string_free(String s);
 

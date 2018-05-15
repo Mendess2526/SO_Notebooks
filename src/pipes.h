@@ -1,7 +1,7 @@
 #ifndef PIPES_H
 #define PIPES_H
 
-typedef struct _pipes * Pipes;
+typedef struct _pipes* Pipes;
 
 Pipes pipes_create(size_t size);
 

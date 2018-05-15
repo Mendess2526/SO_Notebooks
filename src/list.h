@@ -19,7 +19,6 @@ size_t idx_list_len(IdxList l);
 void idx_list_free(IdxList l);
 
 
-
 typedef struct _ptr_list* PtrList;
 
 PtrList ptr_list_create(size_t size);

@@ -4,7 +4,7 @@
 #include "strings.h"
 #include "list.h"
 
-typedef struct _parse_tree * ParseTree;
+typedef struct _parse_tree* ParseTree;
 
 typedef struct _command* Command;
 

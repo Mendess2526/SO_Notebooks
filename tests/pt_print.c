@@ -2,11 +2,10 @@
 #include "utilities.h"
 #include "colors.h"
 
-#include <sys/types.h>
 #include <fcntl.h>
 #include <stdio.h>
 
-void parse_and_dump(char *file){
+void parse_and_dump(char* file){
     int fd = open(file, O_RDONLY);
     ParseTree pt = parse_tree_create(1);
     char* line;

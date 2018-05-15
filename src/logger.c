@@ -13,7 +13,7 @@ static inline char* paintMessage(char* color, char* message){
     strncpy(m, color, cLen);
     strncpy(m + cLen, message, mLen);
     strncpy(m + cLen + mLen, RESET, rLen);
-    m[cLen+mLen+rLen] = '\0';
+    m[cLen + mLen + rLen] = '\0';
     return m;
 }
 
@@ -33,14 +33,16 @@ void LOG_PARSE_ERROR(String line, int lineNumber, char* message, int errOffset){
     char lineN[12];
     size_t lineNlen = int2string(lineNumber, lineN, 12);
     size_t totalLen =
-        strlen(BOLD) + strlen("line ") + lineNlen
-        + strlen(": " RED "error: " RESET) + strlen(message) + strlen("\n\t")
-        + line.length + strlen("\n")
-        + strlen("\t") + strlen(" ")* errOffset + strlen(GREEN "^" RESET "\n");
-    char *output = malloc(sizeof(char) * totalLen);
+            strlen(BOLD) + strlen("line ") + lineNlen
+            + strlen(": " RED "error: " RESET) + strlen(message) +
+            strlen("\n\t")
+            + line.length + strlen("\n")
+            + strlen("\t") + strlen(" ") * errOffset +
+            strlen(GREEN "^" RESET "\n");
+    char* output = malloc(sizeof(char) * totalLen);
     strcat(output, BOLD "line ");
     strncat(output, lineN, lineNlen);
-    strcat(output,": " RED "error: " RESET);
+    strcat(output, ": " RED "error: " RESET);
     strcat(output, message);
     strcat(output, "\n\t");
     strncat(output, line.s, line.length);

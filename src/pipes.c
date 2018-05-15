@@ -25,9 +25,8 @@ void pipes_append(Pipes p){
         p->size *= 2;
         p->pipes = realloc(p->pipes, sizeof(int*) * p->size);
     }
-    p->pipes[p->load] = (int *) malloc(sizeof(int) * 2);
+    p->pipes[p->load] = (int*) malloc(sizeof(int) * 2);
     pipe(p->pipes[p->load++]);
-
 }
 
 int* pipes_index(Pipes p, size_t idx){

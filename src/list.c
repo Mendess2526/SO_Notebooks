@@ -1,8 +1,5 @@
 #include "list.h"
 
-#include <stdlib.h>
-#include <limits.h>
-
 struct _list{
     size_t* array;
     size_t size;
