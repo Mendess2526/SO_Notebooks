@@ -6,15 +6,15 @@
 #include <stdio.h>
 #include <string.h>
 
-char* readln(int fd, size_t* nbyte){
+char* readLn(int fd, size_t* nBytes){
     size_t size = 0;
     size_t buffSize = 1;
-    *nbyte = 0;
+    *nBytes = 0;
     char c;
     char *buff = NULL;
     while(0 < read(fd, &c, 1)){
         if(c == '\0' || c == '\n'){
-            *nbyte = size;
+            *nBytes = size;
             return buff;
         }
         if(size >= (buffSize - 1)){
@@ -23,11 +23,11 @@ char* readln(int fd, size_t* nbyte){
         }
         buff[size++] = c;
     }
-    *nbyte = size;
+    *nBytes = size;
     return buff;
 }
 
-char** words(char *string, int len){
+char** words(char *string, size_t len){
     char *command = malloc(sizeof(char) * len);
     strncpy(command, string, len);
     int argc = 5;
@@ -35,7 +35,7 @@ char** words(char *string, int len){
     int i=0;
     char *token = strtok(command," ");
     do{
-        if(!(i<argc))
+        if(i >= argc)
             argv = realloc(argv,(argc*=2)*sizeof(char *));
 
         argv[i++] = token;
@@ -60,7 +60,7 @@ size_t int2string(int num, char* string, size_t len){
     if(r >= len) return 0;
     ssize_t i = r-1;
     for(; i >= 0; i--){
-        string[i] = '0' + num % 10;
+        string[i] = (char) ('0' + num % 10);
         num /= 10;
     }
     return r;

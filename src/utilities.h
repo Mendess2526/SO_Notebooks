@@ -3,9 +3,9 @@
 
 #include <unistd.h>
 
-char* readln(int fd, size_t* nbyte);
+char* readLn(int fd, size_t* nBytes);
 
-char** words(char *string, int len);
+char** words(char *string, size_t len);
 
 size_t int2string(int num, char* string, size_t len);
 

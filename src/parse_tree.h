@@ -8,11 +8,11 @@ typedef struct _parse_tree * ParseTree;
 
 typedef struct _command* Command;
 
-ParseTree parse_tree_create(int size);
+ParseTree parse_tree_create(size_t size);
 
-int parse_tree_add_line(ParseTree pt, char* line, size_t length);
+ssize_t parse_tree_add_line(ParseTree pt, char* line, size_t length);
 
-Command parse_tree_get_batch(ParseTree pt, int batch);
+Command parse_tree_get_batch(ParseTree pt, size_t batch);
 
 void parse_tree_destroy(ParseTree pt);
 
@@ -22,9 +22,9 @@ void parse_tree_print(ParseTree pt);
 
 String command_get_command(Command c);
 
-int command_get_chained_num(Command c);
+size_t command_get_chained_num(Command c);
 
-int command_get_dependency(Command c);
+size_t command_get_dependency(Command c);
 
 void command_append_output(Command c, String s);
 

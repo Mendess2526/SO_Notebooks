@@ -6,9 +6,9 @@
 #include <unistd.h>
 
 static inline char* paintMessage(char* color, char* message){
-    int cLen = strlen(color);
-    int mLen = strlen(message);
-    int rLen = strlen(RESET);
+    size_t cLen = strlen(color);
+    size_t mLen = strlen(message);
+    size_t rLen = strlen(RESET);
     char* m = malloc(sizeof(char) * (cLen + mLen + rLen + 1));
     strncpy(m, color, cLen);
     strncpy(m + cLen, message, mLen);

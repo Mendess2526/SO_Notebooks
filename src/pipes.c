@@ -7,11 +7,11 @@ typedef struct _pipes* Pipes;
 
 struct _pipes{
     int** pipes;
-    int size;
-    int load;
+    size_t size;
+    size_t load;
 };
 
-Pipes pipes_create(int size){
+Pipes pipes_create(size_t size){
     if(size < 1) size = 20;
     Pipes p = (Pipes) malloc(sizeof(struct _pipes));
     p->size = size;
@@ -30,7 +30,7 @@ void pipes_append(Pipes p){
 
 }
 
-int* pipes_index(Pipes p, int idx){
+int* pipes_index(Pipes p, size_t idx){
     return p->pipes[idx];
 }
 

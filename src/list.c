@@ -35,8 +35,8 @@ size_t idx_list_len(IdxList l){
     return l->load;
 }
 
-size_t idx_list_last(IdxList l){
-    if(l->load == 0) return INT_MIN;
+ssize_t idx_list_last(IdxList l){
+    if(l->load == 0) return -1;
     return l->array[l->load - 1];
 }
 

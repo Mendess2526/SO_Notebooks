@@ -11,7 +11,7 @@ void parse_and_dump(char *file){
     ParseTree pt = parse_tree_create(1);
     char* line;
     size_t n;
-    while((line = readln(fd, &n)) != NULL){
+    while((line = readLn(fd, &n)) != NULL){
         printf("%d, ", parse_tree_add_line(pt, line, n));
         free(line);
     }

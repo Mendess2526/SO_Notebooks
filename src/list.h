@@ -12,7 +12,7 @@ void idx_list_append(IdxList l, size_t val);
 
 ssize_t idx_list_index(IdxList l, size_t idx);
 
-size_t idx_list_last(IdxList l);
+ssize_t idx_list_last(IdxList l);
 
 size_t idx_list_len(IdxList l);
 
