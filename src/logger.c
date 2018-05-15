@@ -22,7 +22,7 @@ void LOG_FATAL(char* message){
     _exit(1);
 }
 
-void LOG_CRITICAL(char* message){
+void _log_CRITICAL(char* message){
     char* paintedMsg = paintMessage(YELLOW, message);
     write(2, paintedMsg, strlen(paintedMsg));
 }

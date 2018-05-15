@@ -62,7 +62,7 @@ struct _parse_tree{
     IdxList batches; /**< The indexes of the batches */
 };
 
-static Command command_create       (Command prev, String command, int dependency);
+static Command command_create       (String command, int dependency);
 static void    command_destroy      (Command c);
 
 static Comment comment_create (String comment);
@@ -149,8 +149,10 @@ static void parse_tree_chain_command(ParseTree pt, Command command){
     }else if(NULL == (cur = n->c.command)){
         LOG_WARNING("Chaining to null command\n");
     }else{
-        while(cur->pipe != NULL) cur = cur->pipe;
+        int depoffset = command->dependency;
+        while(depoffset-- && cur->pipe != NULL) cur = cur->pipe; //TODO ideia de ontem a noite que abandonei
         cur->pipe = command;
+        command->prev = cur;
         for(int backI = command->dependency; backI > 1 && cur; --backI, cur = cur->prev);
         if(!cur) LOG_FATAL("Invalid dependency\n"); //TODO print bad line?
         idx_list_append(cur->dependants, command->dependency);
@@ -163,17 +165,17 @@ static int parse_tree_parse_command(ParseTree pt, char* line, size_t length){
     String s;
     if(line[0] == '|'){
         string_init(&s, line + 1, length - 1);
-        c = command_create(last_command_node(pt)->c.command, s, 1);
+        c = command_create(s, 1);
         parse_tree_chain_command(pt, c);
     }else if(isdigit(line[0])){
         char* tail;
         int dep = strtol(line, &tail, 10);
         string_init(&s, tail + 1, length - ((tail + 1) - line));
-        c = command_create(last_command_node(pt)->c.command, s, dep);
+        c = command_create(s, dep);
         parse_tree_chain_command(pt, c);
     }else{
         string_init(&s, line, length);
-        c = command_create(NULL, s, 0);
+        c = command_create(s, 0);
         finishBatch = idx_list_len(pt->batches);
         idx_list_append(pt->batches, ptr_list_len(pt->nodes));
     }
@@ -185,7 +187,7 @@ static int parse_tree_parse_command(ParseTree pt, char* line, size_t length){
 
 /* Commands */
 
-static Command command_create(Command prev, String command, int dependency){
+static Command command_create(String command, int dependency){
     Command c = (Command) malloc(sizeof(struct _command));
     c->command = command;
     c->dependency = dependency;
@@ -193,7 +195,7 @@ static Command command_create(Command prev, String command, int dependency){
     c->output.length = 0;
     c->dependants = idx_list_create(10);
     c->pipe =  NULL;
-    c->prev = prev;
+    c->prev = NULL;
     return c;
 }
 
@@ -426,11 +428,13 @@ void printCommand(Command c){
         c->output.length = length;
         printf("\t\t<<<\n" RESET);
     }
-    printf("\t\t");
-    for(size_t i = 0; i < idx_list_len(c->dependants); i++){
-        printf(RED "%ld " RESET, idx_list_index(c->dependants, i));
+    if(idx_list_len(c->dependants) > 0){
+        printf("\t\t");
+        for(size_t i = 0; i < idx_list_len(c->dependants); i++){
+            printf(RED "%ld " RESET, idx_list_index(c->dependants, i));
+        }
+        printf("\n");
     }
-    printf("\n");
     if(c->pipe) printCommand(c->pipe);
     else notFirst = 0;
 }
