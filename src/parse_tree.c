@@ -229,8 +229,7 @@ static Command command_create(String command, size_t dependency){
     Command c = (Command) malloc(sizeof(struct _command));
     c->command = command;
     c->dependency = dependency;
-    c->output.s = NULL;
-    c->output.length = 0;
+    string_init(&c->output, "", 1);
     c->dependants = idx_list_create(10);
     c->pipe = NULL;
     return c;
@@ -241,13 +240,7 @@ String command_get_command(Command c){
 }
 
 void command_append_output(Command c, String s){
-    if(c->output.length == 0) c->output = s;
-    else{
-        String newLine;
-        string_init(&newLine, "\n", 1);
-        string_append(&c->output, newLine);
-        string_append(&c->output, s);
-    }
+    string_append(&c->output, s);
 }
 
 Command command_pipe(Command c){
