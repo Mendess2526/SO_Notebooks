@@ -7,23 +7,45 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
+/**
+ * Executes a single command.
+ * \param c The command to execute.
+ * \param i The index of the pipe it's input and output is gotten from.
+ * \param inPipes The pipes where the input comes from.
+ * \param outPipes The pipes where the output is writen to.
+ */
 static void execCommand(Command c,
                                size_t i,
                                Pipes inPipes,
                                Pipes outPipes);
-
-static void writeToPipes(Command cur,
+/**
+ * Writes to the input pipes of all the dependencies of the given command.
+ *
+ * \param c The command with the dependencies.
+ * \param inPipes The input pipes.
+ * \param buf The buffer with with the ouput to write.
+ * \param n The length of the pipe.
+ * \param i The position of the command in the batch.
+ */
+static void writeToPipes(Command c,
                                 Pipes inPipes,
                                 char* buf,
                                 size_t n,
                                 size_t i);
-
+/**
+ * Closes the input pipes of all the dependencies of the given command.
+ *
+ * \param c The command with the dependencies.
+ * \param inPipes The pipes to close.
+ * \param i The position of the command in the batch.
+ */
 static void closePipes(Command cur,
                               Pipes inPipes,
                               size_t i);
 
-void execBatch(Command c, int* pipfd){
-    if(fork()) return;
+int execBatch(Command c, int* pipfd){
+    int pid = fork();
+    if(pid) return pid;
     close(pipfd[0]);
 
     Pipes inPipes = pipes_create(3);
@@ -84,8 +106,8 @@ void execCommand(Command c, size_t i, Pipes inPipes, Pipes outPipes){
     }
 }
 
-void writeToPipes(Command cur, Pipes inPipes, char* buf, size_t n, size_t i){
-    IdxList deps = command_get_dependants(cur);
+void writeToPipes(Command c, Pipes inPipes, char* buf, size_t n, size_t i){
+    IdxList deps = command_get_dependants(c);
     // Foreach command that depends
     for(size_t dep = 0; dep < idx_list_len(deps); dep++){
         ssize_t idx = idx_list_index(deps, dep);
@@ -99,8 +121,8 @@ void writeToPipes(Command cur, Pipes inPipes, char* buf, size_t n, size_t i){
     }
 }
 
-void closePipes(Command cur, Pipes inPipes, size_t i){
-    IdxList deps = command_get_dependants(cur);
+void closePipes(Command c, Pipes inPipes, size_t i){
+    IdxList deps = command_get_dependants(c);
     // Foreach command that depends
     for(size_t dep = 0; dep < idx_list_len(deps); dep++){
         ssize_t idx = idx_list_index(deps, dep);

@@ -3,6 +3,14 @@
 
 #include "parse_tree.h"
 
-void execBatch(Command c, int* pipfd);
+/**
+ * \brief Executes a batch of commands and writes to the given pipes their
+ * outputs.
+ *
+ * \param c The batch of commands.
+ * \param pipfd The pipe where the outputs will be writen to.
+ * \returns The PID of the process that executes the batch.
+ */
+int execBatch(Command c, int* pipfd);
 
 #endif /* EXEC_BATCH_H */
