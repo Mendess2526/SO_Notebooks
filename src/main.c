@@ -6,8 +6,20 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <sys/types.h>
+#include <signal.h>
+
+typedef void (*sighandler_t)(int);
+
+int kill(pid_t pid, int sig);
+
+void nuke(int i){
+    (void) i;
+    kill(0, SIGKILL);
+}
 
 int main(int argc, char** argv){
+    signal(SIGINT, nuke);
     if(argc < 2){
         char message[] = "Usage: ./program <notebook.nb>\n";
         write(1, message, strlen(message));
