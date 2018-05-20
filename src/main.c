@@ -31,12 +31,13 @@ int main(int argc, char** argv){
     }
     //TODO maybe implement read from stdin '-'
     int fd = open(argv[1], O_RDONLY, 0644);
-    char* buff;
+    char* buff = NULL;
     size_t len;
     Pipes pipes = pipes_create(20);
     ParseTree pt = parse_tree_create(20);
     IdxList pids = idx_list_create(20);
-    while(NULL != (buff = readLn(fd, &len))){
+    do{
+        buff = readLn(fd, &len);
         ssize_t batch = parse_tree_add_line(pt, buff, len);
         if(batch != -1){
             pipes_append(pipes);
@@ -45,7 +46,7 @@ int main(int argc, char** argv){
             close(pipes_last(pipes)[1]);
             idx_list_append(pids, pid);
         }
-    }
+    }while(NULL != buff);
     close(fd);
 
     pid_t pid;
