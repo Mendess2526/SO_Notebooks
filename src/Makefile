@@ -11,7 +11,7 @@ print-% : ; @echo $* = $($*)
 $(ODIR)/%o :
 	$(CC) $(CFLAGS) -c -o $@ $(patsubst %.o, %.c, $(patsubst $(ODIR)/%, %, $@))
 
-program: notebooks clean $(OBJECTS)
+program: clean $(OBJECTS)
 	$(CC) $(CFLAGS) $(OBJECTS) -o $(EXE)
 
 notebooks:
