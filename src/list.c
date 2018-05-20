@@ -37,6 +37,13 @@ ssize_t idx_list_last(IdxList l){
     return l->array[l->load - 1];
 }
 
+ssize_t idx_list_find(IdxList l, size_t idx){
+    size_t i;
+    for(i = 0; i < l->load; i++) if(l->array[i] == idx) break;
+    if(i == l->load) return -1;
+    return i;
+}
+
 void idx_list_free(IdxList l){
     free(l->array);
     free(l);

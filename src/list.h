@@ -16,6 +16,8 @@ ssize_t idx_list_last(IdxList l);
 
 size_t idx_list_len(IdxList l);
 
+ssize_t idx_list_find(IdxList l, size_t idx);
+
 void idx_list_free(IdxList l);
 
 
