@@ -1,6 +1,8 @@
 #ifndef PIPES_H
 #define PIPES_H
 
+#include <stdlib.h>
+
 typedef struct _pipes* Pipes;
 
 Pipes pipes_create(size_t size);
@@ -14,7 +16,5 @@ size_t pipes_len(Pipes p);
 int* pipes_last(Pipes p);
 
 void pipes_free(Pipes p);
-
-void read_from_pipes_write_batch(Command cmd, Pipes inPipes);
 
 #endif
