@@ -247,19 +247,6 @@ Command command_pipe(Command c){
     return c->pipe;
 }
 
-size_t command_get_chained_num(Command c){
-    size_t i = 0;
-    while(c){
-        c = c->pipe;
-        i++;
-    }
-    return i;
-}
-
-size_t command_get_dependency(Command c){
-    return c->dependency;
-}
-
 IdxList command_get_dependants(Command c){
     return c->dependants;
 }

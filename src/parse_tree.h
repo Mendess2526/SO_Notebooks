@@ -41,14 +41,14 @@ ssize_t parse_tree_add_line(ParseTree pt, char* line, size_t length);
 Command parse_tree_get_batch(ParseTree pt, size_t batch);
 
 /**
- * Frees alocated memory used by the parse_tree.
+ * Frees allocated memory used by the parse_tree.
  *
  * \param pt The parse_tree instance.
  */
 void parse_tree_destroy(ParseTree pt);
 
 /**
- * \brief Dumps the parse_tree as a NULL terminted array of NULL terminated strings.
+ * \brief Dumps the parse_tree as a NULL terminated array of NULL terminated strings.
  *
  * Each string is a line in the file that this tree represents.
  *
@@ -71,23 +71,6 @@ void parse_tree_print(ParseTree pt);
  * \returns The string with the command.
  */
 String command_get_command(Command c);
-
-/**
- * Counts the length of the batch.
- *
- * \param c The command to count from.
- * \returns The length of the batch.
- */
-size_t command_get_chained_num(Command c);
-
-/**
- * \brief Returns the relative position of the command this command depends on.
- *
- * \param c The command
- * \returns The relative position of the command the given command depends on
- *          or 0 if the command does not depend on any others.
- */
-size_t command_get_dependency(Command c);
 
 /**
  * \brief Appends output to a command.

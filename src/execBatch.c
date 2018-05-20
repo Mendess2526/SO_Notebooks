@@ -23,7 +23,7 @@ static void execCommand(Command c,
  *
  * \param c The command with the dependencies.
  * \param inPipes The input pipes.
- * \param buf The buffer with with the ouput to write.
+ * \param buf The buffer with with the output to write.
  * \param n The length of the pipe.
  * \param i The position of the command in the batch.
  */
@@ -39,7 +39,7 @@ static void writeToPipes(Command c,
  * \param inPipes The pipes to close.
  * \param i The position of the command in the batch.
  */
-static void closePipes(Command cur,
+static void closePipes(Command c,
                               Pipes inPipes,
                               size_t i);
 
@@ -75,7 +75,7 @@ int execBatch(Command c, int* pipfd){
                 writeToPipes(cur, inPipes, buf, (size_t) n, i);
             }
         }
-        wait(NULL); //TODO figure out why this is needed
+        wait(NULL);
         write(pipfd[1], "\0", 1); // Write the separated '\0'
         if(i < (cmdCount - 1))
             closePipes(cur, inPipes, i); // Close input pipes
@@ -95,14 +95,12 @@ void execCommand(Command c, size_t i, Pipes inPipes, Pipes outPipes){
         }
         dup2(pipes_index(outPipes, i)[1], 1); // Redirect output to pipe
         for(ssize_t j = i; j >= 0; j--)
-            close(pipes_index(outPipes, j)[1]);
+            close(pipes_index(outPipes, (size_t) j)[1]);
 
         String cmd = command_get_command(c);
         char** command = words(cmd.s, cmd.length);
         execvp(command[0], command);
         _exit(1);
-    }else{
-        // close(pipes_index(outPipes, i)[1]);
     }
 }
 

@@ -11,10 +11,6 @@
 #include <sys/wait.h>
 #include <signal.h>
 
-typedef void (*sighandler_t)(int);
-
-int kill(pid_t pid, int sig);
-
 void nuke(int i){
     (void) i;
     kill(0, SIGKILL);
@@ -46,11 +42,11 @@ int main(int argc, char** argv){
     // Read outputs and write store them in the batches
     pid_t pid;
     while((pid = wait(NULL)) > 0){
-        ssize_t i = idx_list_find(pids, pid);
-        if(i == -1) LOG_WARNING("Missing pid\n");
+        ssize_t i = idx_list_find(pids, (size_t) pid);
+        if(i < 0) LOG_WARNING("Missing pid\n");
         else
             read_from_pipes_write_batch(parse_tree_get_batch(pt, (size_t) i),
-                                        pipes_index(pipes, i));
+                                        pipes_index(pipes, (size_t) i));
     }
     pipes_free(pipes);
 
@@ -72,7 +68,10 @@ ParseTree parse_and_exec(int fd, Pipes pipes, IdxList pids){
             pid_t pid = execBatch(parse_tree_get_batch(pt, (size_t) batch),
                                   pipes_last(pipes));
             close(pipes_last(pipes)[1]);
-            idx_list_append(pids, pid);
+            if(pid > 0)
+                idx_list_append(pids, (size_t) pid);
+            else
+                LOG_WARNING("Couldn't fork\n");
         }
     }while(NULL != buff);
     return pt;
@@ -92,17 +91,17 @@ void read_from_pipes_write_batch(Command cmd, int* pp){
     }
     size_t offset = 0;
     while(cmd){
-        n = strlen(buf + offset); // strlen stops at '\0'
+        size_t len = strlen(buf + offset); // strlen stops at '\0'
         if(n < 1){
-            LOG_WARNING("Strlen failed read less then 1 byte: Buf + offset: ");
+            LOG_WARNING("strlen failed read less then 1 byte: Buf + offset: ");
             LOG_CRITICAL(buf + offset);
         }
         String output;
-        string_init(&output, buf + offset, n);
+        string_init(&output, buf + offset, len);
         command_append_output(cmd, output);
         string_free(output);
         cmd = command_pipe(cmd);
-        offset += n + 1;
+        offset += len + 1;
     }
 }
 

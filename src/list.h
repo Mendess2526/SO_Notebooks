@@ -29,8 +29,6 @@ void ptr_list_append(PtrList l, void* val);
 
 void* ptr_list_index(PtrList l, size_t idx);
 
-void* ptr_list_last(PtrList l);
-
 size_t ptr_list_len(PtrList l);
 
 void ptr_list_free(PtrList l);

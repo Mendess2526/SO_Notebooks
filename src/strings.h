@@ -14,7 +14,7 @@ typedef struct string{
 }String;
 
 /**
- * Initializes the given string, alocating the array and copying
+ * Initializes the given string, allocating the array and copying
  * length number of char from string.
  *
  * \param s A pointer to the string.

@@ -81,11 +81,6 @@ size_t ptr_list_len(PtrList l){
     return l->load;
 }
 
-void* ptr_list_last(PtrList l){
-    if(l->load == 0) return NULL;
-    return l->array[l->load - 1];
-}
-
 void ptr_list_free(PtrList l){
     free(l->array);
     free(l);
