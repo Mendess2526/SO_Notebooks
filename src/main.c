@@ -3,6 +3,7 @@
 #include "pipes.h"
 #include "execBatch.h"
 #include "logger.h"
+#include "colors.h"
 
 #include <unistd.h>
 #include <fcntl.h>
@@ -16,22 +17,35 @@ void nuke(int i){
     kill(0, SIGKILL);
 }
 
+static int handleFlags(int argc, char** argv);
+
 static ParseTree parse_and_exec(int fd, Pipes pipes, IdxList pids);
 
 static void read_from_pipes_write_batch(Command cmd, int* pp);
 
 void tree_to_file(ParseTree pt, char* filename);
 
+char* FILE_NAME;
+short O_STDOUT;
+short I_STDIN;
+
 int main(int argc, char** argv){
     signal(SIGINT, nuke);
     if(argc < 2){
-        char message[] = "Usage: ./program <notebook.nb>\n";
+        char message[] = "Usage: ./program [OPTIONS] notebook.nb\n\n"
+                         "use ./program -h for help\n";
         write(1, message, strlen(message));
         return 1;
     }
+    int mode = handleFlags(argc, argv);
+    if(mode) return mode;
     //TODO maybe implement read from stdin '-'
     // Open file to read from
-    int fd = open(argv[1], O_RDONLY, 0644);
+    int fd;
+    if(I_STDIN)
+       fd = 0;
+    else
+       fd = open(FILE_NAME, O_RDONLY, 0644);
 
     // Parse file and execute batches
     Pipes pipes = pipes_create(20);
@@ -51,8 +65,42 @@ int main(int argc, char** argv){
     pipes_free(pipes);
 
     // Write the tree to a file
-    tree_to_file(pt, argv[1]);
+    tree_to_file(pt, FILE_NAME);
     parse_tree_destroy(pt);
+    return 0;
+}
+
+void printHelp(char* arg){
+    if(arg){
+        char message[] = "Invalid argument: ";
+        write(2, message, strlen(message));
+        write(2, arg, strlen(arg));
+        write(2, "\n", 1);
+    }else{
+        char message[] = "./program [OPTIONS] file\n\n"
+                         "If file is '-' will read from "UNDERLINE"stdin"RESET
+                         " and write to "UNDERLINE"stdout"RESET"\n"
+                         BOLD "OPTIONS:\n" RESET
+                         "\t-o\tOutput to "UNDERLINE"stdout"RESET
+                                " instead of "UNDERLINE"file"RESET"\n"
+                         "\t-h\tDisplay this message\n";
+        write(1, message, strlen(message));
+    }
+}
+
+int handleFlags(int argc, char** argv){
+    for(int i = 1; i < argc; i++){
+        if(argv[i][0] == '-'){
+            switch(argv[i][1]){
+                case '\0': I_STDIN = 1; O_STDOUT = 1; break;
+                case 'o': O_STDOUT = 1; break;
+                case 'h': printHelp(NULL); return 1;
+                default: printHelp(argv[i]); return 2;
+            }
+        }else{
+            FILE_NAME = argv[i];
+        }
+    }
     return 0;
 }
 
@@ -102,8 +150,20 @@ void read_from_pipes_write_batch(Command cmd, int* pp){
     }
 }
 
+void pick_and_write_color(char* line){
+    switch(line[0]){
+        case '$': write(1, YELLOW, strlen(YELLOW)); break;
+        case '>':
+        case '<': write(1, RED, strlen(RED)); break;
+    }
+}
+
 void tree_to_file(ParseTree pt, char* filename){
-    int fd = creat(filename, 0644);
+    int fd;
+    if(O_STDOUT)
+        fd = 1;
+    else
+        fd = creat(filename, 0644);
     char** dump = parse_tree_dump(pt);
     int i = 0;
     while(dump[i]){
