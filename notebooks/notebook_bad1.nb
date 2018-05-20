@@ -1,4 +1,4 @@
-Este comando lista os ficheiros:
+Este comando lista os ficheiros: SHOULD PARSE ERROR HERE
 $| ls
 Agora podemos ordenar estes ficheiros:
 $| sort

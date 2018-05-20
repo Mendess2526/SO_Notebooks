@@ -8,5 +8,5 @@ Este comando lista os ficheiros:
 $ ls
 Agora podemos ordenar estes ficheiros:
 $| sort
-E escolher o primeiro:
+E escolher o primeiro: SHOULD PARSE ERROR HERE
 $5| head -1
