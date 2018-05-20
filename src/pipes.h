@@ -15,4 +15,6 @@ int* pipes_last(Pipes p);
 
 void pipes_free(Pipes p);
 
+void read_from_pipes_write_batch(Command cmd, Pipes inPipes);
+
 #endif

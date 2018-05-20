@@ -37,10 +37,9 @@ int main(int argc, char** argv){
             pipes_append(pipes);
             execBatch(parse_tree_get_batch(pt, (size_t) batch), pipes_last(pipes));
         }
+        read_from_pipes_write_batch(parse_tree_get_batch(pt, (size_t) batch),pipes);
     }
     close(fd);
-
-    //TODO ler os pipes e preencher os batches correspondentes
 
     pipes_free(pipes);
     fd = creat(argv[1], 0644);
