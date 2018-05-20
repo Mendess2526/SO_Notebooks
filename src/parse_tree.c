@@ -229,7 +229,7 @@ static Command command_create(String command, size_t dependency){
     Command c = (Command) malloc(sizeof(struct _command));
     c->command = command;
     c->dependency = dependency;
-    string_init(&c->output, "", 1);
+    string_init(&c->output, NULL, 0);
     c->dependants = idx_list_create(10);
     c->pipe = NULL;
     return c;
