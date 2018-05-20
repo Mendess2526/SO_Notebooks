@@ -2,6 +2,7 @@
 #include "utilities.h"
 #include "pipes.h"
 #include "execBatch.h"
+#include "logger.h"
 
 #include <unistd.h>
 #include <fcntl.h>
@@ -41,6 +42,7 @@ int main(int argc, char** argv){
             pipes_append(pipes);
             pid_t pid = execBatch(parse_tree_get_batch(pt, (size_t) batch),
                                   pipes_last(pipes));
+            close(pipes_last(pipes)[1]);
             idx_list_append(pids, pid);
         }
     }
@@ -69,16 +71,30 @@ int main(int argc, char** argv){
     return 0;
 }
 
-void read_from_pipes_write_batch(Command cmd, Pipes inPipes, size_t i, size_t n){
-    char buf[512] = "";
-    char c;
-    while(read(pipes_index(inPipes, i)[0], &c , 1)>0){
-        buf[n++]=c;
-        if(buf[n] == '\0'){
-            String *buffer;
-            string_init(buffer,buf,n);
-            command_append_output(cmd, *buffer);
-            string_free(*buffer);
+void read_from_pipes_write_batch(Command cmd, int* pp){
+    size_t size = 1024;
+    size_t load = 0;
+    char* buf = malloc(sizeof(char) * size);
+    ssize_t n;
+    while((n = read(pp[0], buf + load, size)) > 0){
+        load += n;
+        if(load >= size){
+           size *= 2;
+           buf = realloc(buf, sizeof(char) * size);
         }
+    }
+    size_t offset = 0;
+    while(cmd){
+        n = strlen(buf + offset); // strlen stops at '\0'
+        if(n < 1){
+            LOG_WARNING("Strlen failed read less then 1 byte: Buf + offset: ");
+            LOG_CRITICAL(buf + offset);
+        }
+        String output;
+        string_init(&output, buf + offset, n);
+        command_append_output(cmd, output);
+        string_free(output);
+        cmd = command_pipe(cmd);
+        offset += n + 1;
     }
 }
