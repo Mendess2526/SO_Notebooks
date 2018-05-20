@@ -11,7 +11,7 @@ void string_init(String* s, char* string, size_t length){
 void string_append(String* dest, String src){
     dest->s = (char*) realloc(dest->s,
             sizeof(char) * (dest->length + src.length));
-    memcpy(dest->s + dest->length, src.s, src.length);
+    memcpy(dest->s + dest->length - 1, src.s, src.length);
     dest->length = dest->length + src.length;
 }
 
