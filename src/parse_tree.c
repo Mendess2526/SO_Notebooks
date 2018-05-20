@@ -100,7 +100,7 @@ ssize_t parse_tree_add_line(ParseTree pt, char* line, size_t length){
     ssize_t finishBatch = -1;
     LINE_NUMBER++;
     string_init(&CURRENT_LINE, line, length);
-    if(!line) return idx_list_len(pt->batches);
+    if(!line) return idx_list_len(pt->batches) - 1;
     if(IS_OUTPUT_START(line, length)){
         pt->state = OUTPUT_MODE;
         return finishBatch;
@@ -214,7 +214,7 @@ static ssize_t parse_tree_parse_command(ParseTree pt,
     }else{
         string_init(&s, line, length);
         c = command_create(s, 0);
-        finishBatch = idx_list_len(pt->batches);
+        finishBatch = idx_list_len(pt->batches) - 1;
         idx_list_append(pt->batches, ptr_list_len(pt->nodes));
     }
 
