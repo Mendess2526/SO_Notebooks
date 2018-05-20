@@ -9,7 +9,7 @@
 #define OUTPUT_START     ">>>"
 #define OUTPUT_END       "<<<"
 #define OUTPUT_START_LEN (1 + strlen(OUTPUT_START) + 1)
-#define OUTPUT_END_LEN   (1 + strlen(OUTPUT_END))
+#define OUTPUT_END_LEN   (strlen(OUTPUT_END))
 #define IS_OUTPUT_START(line, len) \
     ((len) > 2 && 0 == strncmp(line, OUTPUT_START, 3))
 #define IS_OUTPUT_END(line, len)   \
@@ -345,7 +345,7 @@ char* command_dump(Command c){
         strncpy(cmd, c->output.s, c->output.length);
         cmd += c->output.length;
 
-        strncpy(cmd, "\n"OUTPUT_END, OUTPUT_END_LEN);
+        strncpy(cmd, OUTPUT_END, OUTPUT_END_LEN);
         cmd += OUTPUT_END_LEN;
     }
     *cmd = '\0';

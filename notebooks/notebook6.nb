@@ -1,0 +1,6 @@
+Este comando lista os ficheiros:
+$ ls
+Take the first line
+$| head -1
+Stall for 10 seconds
+$ sleep 10

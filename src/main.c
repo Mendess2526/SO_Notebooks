@@ -92,10 +92,7 @@ void read_from_pipes_write_batch(Command cmd, int* pp){
     size_t offset = 0;
     while(cmd){
         size_t len = strlen(buf + offset); // strlen stops at '\0'
-        if(n < 1){
-            LOG_WARNING("strlen failed read less then 1 byte: Buf + offset: ");
-            LOG_CRITICAL(buf + offset);
-        }
+        if(len < 1) return;
         String output;
         string_init(&output, buf + offset, len);
         command_append_output(cmd, output);
