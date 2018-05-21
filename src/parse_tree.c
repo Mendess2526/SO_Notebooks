@@ -55,8 +55,9 @@ typedef enum _parse_state{
 
 struct _parse_tree{
     ParseState state;
-    PtrList nodes;   /**< The node array */
-    IdxList batches; /**< The indexes of the batches */
+    PtrList nodes;    /**< The node array */
+    IdxList commands; /**< The indexes of the commands */
+    IdxList batches;  /**< The indexes of the batches */
 };
 
 /** Global variable to count the number of lines */
@@ -92,6 +93,7 @@ ParseTree parse_tree_create(size_t size){
     ParseTree pt = (ParseTree) malloc(sizeof(struct _parse_tree));
     pt->state = TEXT_MODE;
     pt->nodes = ptr_list_create(size);
+    pt->commands = idx_list_create(size);
     pt->batches = idx_list_create(size);
     return pt;
 }
@@ -141,6 +143,7 @@ void parse_tree_destroy(ParseTree pt){
     for(size_t i = 0; i < len; i++)
         tree_node_destroy(ptr_list_index(pt->nodes, i));
     ptr_list_free(pt->nodes);
+    idx_list_free(pt->commands);
     idx_list_free(pt->batches);
     free(pt);
 }
@@ -153,19 +156,27 @@ static void parse_tree_add_command(ParseTree pt, Command command){
     ptr_list_append(pt->nodes, tree_node_create_command(command));
 }
 
+/*
 static Node last_command_node(ParseTree pt){
     ssize_t idx = idx_list_last(pt->batches);
     if(idx < 0) return NULL;
     return ptr_list_index(pt->nodes, (size_t) idx);
 }
+*/
+
+static Node get_dependency_node(ParseTree pt, size_t dependency){
+    size_t idx = idx_list_index(pt->commands,
+                                idx_list_len(pt->commands) - dependency);
+    return ptr_list_index(pt->nodes, idx);
+}
 
 static void parse_tree_chain_command(ParseTree pt, Command command){
-    Node n = last_command_node(pt);
+    Node n = get_dependency_node(pt, command->dependency);
     Command cur = NULL;
     if(n == NULL){
         LOG_PARSE_ERROR(CURRENT_LINE,
                 LINE_NUMBER,
-                "First command can't depend on any others",
+                "Impossible dependency",
                 CURRENT_LINE.s[1] == '|' ? 1 : 2);
         _exit(1);
     }else if(n->type == N_COMMENT){
@@ -173,25 +184,11 @@ static void parse_tree_chain_command(ParseTree pt, Command command){
     }else if(NULL == (cur = n->c.command)){
         LOG_WARNING("Chaining to null command\n");
     }else{
-        size_t depOffset = command->dependency;
-        Command dep = n->c.command;
-        while(cur->pipe != NULL){
-            if(depOffset == 1){
-                dep = dep->pipe;
-            }else{
-                depOffset--;
-            }
-            cur = cur->pipe;
-        }
-        if(depOffset > 1){
-            LOG_PARSE_ERROR(CURRENT_LINE,
-                    LINE_NUMBER,
-                    "Impossible dependency",
-                    1);
-            _exit(1);
-        }
+        Command dep = cur;
+        size_t offset = 1;
+        for(; cur->pipe != NULL; cur = cur->pipe) offset++;
         cur->pipe = command;
-        idx_list_append(dep->dependants, command->dependency);
+        idx_list_append(dep->dependants, offset);
     }
 }
 
@@ -214,6 +211,7 @@ static ssize_t parse_tree_parse_command(ParseTree pt,
         idx_list_append(pt->batches, ptr_list_len(pt->nodes));
     }
 
+    idx_list_append(pt->commands, ptr_list_len(pt->nodes));
     parse_tree_add_command(pt, c);
 
     return finishBatch;

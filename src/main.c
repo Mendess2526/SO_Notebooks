@@ -7,14 +7,13 @@
 
 #include <unistd.h>
 #include <fcntl.h>
-#include <stdio.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <signal.h>
 
 void nuke(int i){
     (void) i;
-    kill(0, SIGKILL);
+    //kill(0, SIGKILL);
 }
 
 static int handleFlags(int argc, char** argv);
@@ -30,7 +29,7 @@ short O_STDOUT;
 short I_STDIN;
 
 int main(int argc, char** argv){
-    signal(SIGINT, nuke);
+//    signal(SIGINT, nuke);
     if(argc < 2){
         char message[] = "Usage: ./program [OPTIONS] notebook.nb\n\n"
                          "use ./program -h for help\n";
@@ -39,7 +38,6 @@ int main(int argc, char** argv){
     }
     int mode = handleFlags(argc, argv);
     if(mode) return mode;
-    //TODO maybe implement read from stdin '-'
     // Open file to read from
     int fd;
     if(I_STDIN)
@@ -55,7 +53,12 @@ int main(int argc, char** argv){
 
     // Read outputs and write store them in the batches
     pid_t pid;
-    while((pid = wait(NULL)) > 0){
+    int status;
+    while((pid = wait(&status)) > 0){
+        if(WIFEXITED(status) && WEXITSTATUS(status) != 0){
+            LOG_FATAL("Batch failed\n");
+            _exit(1);
+        }
         ssize_t i = idx_list_find(pids, (size_t) pid);
         if(i < 0) LOG_WARNING("Missing pid\n");
         else
@@ -108,21 +111,25 @@ ParseTree parse_and_exec(int fd, Pipes pipes, IdxList pids){
     ParseTree pt = parse_tree_create(20);
     char* buff = NULL;
     size_t len;
+    size_t batchCount = 0;
     do{
         buff = readLn(fd, &len);
         ssize_t batch = parse_tree_add_line(pt, buff, len);
         if(batch != -1){
-            pipes_append(pipes);
-            pid_t pid = execBatch(parse_tree_get_batch(pt, (size_t) batch),
-                                  pipes_last(pipes));
-            close(pipes_last(pipes)[1]);
-            if(pid > 0)
-                idx_list_append(pids, (size_t) pid);
-            else
-                LOG_WARNING("Couldn't fork\n");
+            batchCount++;
         }
         free(buff);
     }while(NULL != buff);
+    for(size_t i = 0; i < batchCount; i++){
+        pipes_append(pipes);
+        pid_t pid = execBatch(parse_tree_get_batch(pt, i),
+                              pipes_last(pipes));
+        close(pipes_last(pipes)[1]);
+        if(pid > 0)
+            idx_list_append(pids, (size_t) pid);
+        else
+            LOG_WARNING("Couldn't fork\n");
+    }
     return pt;
 }
 

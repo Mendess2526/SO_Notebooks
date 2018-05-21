@@ -75,7 +75,12 @@ int execBatch(Command c, int* pipfd){
                 writeToPipes(cur, inPipes, buf, (size_t) n, i);
             }
         }
-        wait(NULL);
+        int status;
+        wait(&status);
+        if(WIFEXITED(status) && WEXITSTATUS(status) != 0){
+            LOG_FATAL("Command failed\n");
+            _exit(1);
+        }
         write(pipfd[1], "\0", 1); // Write the separated '\0'
         if(i < (cmdCount - 1))
             closePipes(cur, inPipes, i); // Close input pipes

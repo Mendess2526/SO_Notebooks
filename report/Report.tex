@@ -1,0 +1,105 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[portuguese]{babel}
+\usepackage{titlesec}
+\usepackage{graphicx}
+\usepackage{indentfirst}
+\usepackage{enumerate}
+\usepackage{float}
+\usepackage{array}
+\usepackage{tikz}
+\usepackage{multirow}
+\usepackage{multicol}
+\usepackage{geometry}
+\usepackage[cache=false]{minted}
+\usepackage{pdflscape}
+\usepackage[titletoc]{appendix}
+\usepackage{hyperref}
+\geometry{
+ a4paper,
+ top=2cm,
+ bottom=2cm,
+ left=3cm,
+ right=3cm
+}
+\addto\captionsportuguese{
+      \renewcommand{\contentsname}
+          {Índice}
+}
+\begin{document}
+
+\newcommand{\outputStart}[0]{$>>>$}
+\newcommand{\outputEnd}[0]{$<<<$}
+
+\begin{titlepage}
+    \center
+    {\huge {\bf Universidade do Minho}}\\[0.4cm]
+    \vspace{3.0cm}
+    \textsc{\huge{Processamento de notebooks}}\\[0.5cm]
+    \vspace{3.0cm}
+    \textsc{\huge{Mestrado Integrado em Engenharia Informática}}\\[0.5cm]
+    \vspace{2.0cm}
+    \textsc{Sistemas Operativos}\\[0.5cm]
+    \textsc{(2º Ano, 2º Semestre, 2017/2018)}\\[0.5cm]
+    \vspace{1.5cm}
+    \begin{flushleft}
+        A79003 \,\,\,Pedro Mendes Félix da Costa
+        \vspace{0.2cm}
+
+        A80453 \,\,\,Bárbara Andreia Cardoso Ferreira
+        \vspace{0.2cm}
+
+        A00000 \,\,\,Filipa
+    \end{flushleft}
+        \vspace{1cm}
+    \begin{flushright}
+        Braga
+
+        Maio 2018
+    \end{flushright}
+
+\end{titlepage}
+
+\tableofcontents
+\clearpage
+
+\section{Introdução}
+    Este trabalho foi realizado no âmbito da unidade curricular sistemas
+    operativos e tem como objetivo o processamento de ficheiros de texto
+    com comandos de bash alterando estes para incluir o \textit{output} destes.
+
+    Este processamento foi implementando com recurso a \textit{system calls}
+    e à criação de multiplos processos para que houvesse o maximo de
+    paralelismo possivel.
+
+\section{Descrição do Problema}
+    Um ficheiro de texto, a que damos o nome de \textit{notebook}, pode conter
+    3 tipos de conteudo.
+    \begin{itemize}
+            \item Comentarios
+            \item Commandos
+            \item Output
+    \end{itemize}
+    \subsection{Comentarios}
+        Texto simples que não é alterado de forma alguma durante o
+        processamento. Estes não podem começar por \$, '\outputStart' ou
+        '\outputEnd'.
+    \subsection{Comando}
+        Linha começada por \$ que contem o comando que vai ser executado.
+        Caso esteja um pipe $|$
+
+\section{Estruturas de Dados}
+
+\section{Modularização Funcional e Resolução das queries}
+
+\section{Conclusões e Trabalho Futuro}
+    Em suma, o grupo considera que o trabalho foi realizado na sua
+    totalidade de forma eficiente e correta, respondendo a todas as queries.
+
+    Um aspeto que poderia ser melhorado é a ordenação de utilizadores. Estes,
+    foram guardados apenas numa tabela de hash e quando é necessária um lista
+    ordenada dos mesmos, esta, tem de ser percorrida na sua totalidade. Esta
+    decisão, centrou-se no facto de que nenhuma única ordenação se apresenta
+    particularmente vantajosa, face às demais.
+
+\end{document}
