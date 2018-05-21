@@ -63,7 +63,7 @@ int main(int argc, char** argv){
                                         pipes_index(pipes, (size_t) i));
     }
     pipes_free(pipes);
-
+    idx_list_free(pids);
     // Write the tree to a file
     tree_to_file(pt, FILE_NAME);
     parse_tree_destroy(pt);
@@ -121,6 +121,7 @@ ParseTree parse_and_exec(int fd, Pipes pipes, IdxList pids){
             else
                 LOG_WARNING("Couldn't fork\n");
         }
+        free(buff);
     }while(NULL != buff);
     return pt;
 }
@@ -130,7 +131,7 @@ void read_from_pipes_write_batch(Command cmd, int* pp){
     size_t load = 0;
     char* buf = malloc(sizeof(char) * size);
     ssize_t n;
-    while((n = read(pp[0], buf + load, size)) > 0){
+    while((n = read(pp[0], buf + load, size - load)) > 0){
         load += n;
         if(load >= size){
            size *= 2;
@@ -140,7 +141,7 @@ void read_from_pipes_write_batch(Command cmd, int* pp){
     size_t offset = 0;
     while(cmd){
         size_t len = strlen(buf + offset); // strlen stops at '\0'
-        if(len < 1) return;
+        if(len < 1) break;
         String output;
         string_init(&output, buf + offset, len);
         command_append_output(cmd, output);
@@ -148,6 +149,7 @@ void read_from_pipes_write_batch(Command cmd, int* pp){
         cmd = command_pipe(cmd);
         offset += len + 1;
     }
+    free(buf);
 }
 
 void pick_and_write_color(char* line){
@@ -171,4 +173,5 @@ void tree_to_file(ParseTree pt, char* filename){
         write(fd, "\n", 1);
         free(dump[i++]);
     }
+    free(dump);
 }

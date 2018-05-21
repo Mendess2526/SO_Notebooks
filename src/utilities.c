@@ -28,8 +28,9 @@ char* readLn(int fd, size_t* nBytes){
 }
 
 char** words(char* string, size_t len){
-    char* command = malloc(sizeof(char) * len);
+    char* command = malloc(sizeof(char) * len + 1);
     strncpy(command, string, len);
+    command[len] = '\0';
     int argc = 5;
     char** argv = malloc(argc * sizeof(char*));
     int i = 0;

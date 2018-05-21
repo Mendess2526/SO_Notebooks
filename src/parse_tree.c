@@ -64,7 +64,7 @@ static int LINE_NUMBER;
 /** Global variable to store the current line, needed for error messages*/
 static String CURRENT_LINE;
 
-static Command command_create(String command, size_t dependency);
+static Command command_create(char* line, size_t length, size_t dependency);
 
 static void command_destroy(Command c);
 
@@ -99,7 +99,6 @@ ParseTree parse_tree_create(size_t size){
 ssize_t parse_tree_add_line(ParseTree pt, char* line, size_t length){
     ssize_t finishBatch = -1;
     LINE_NUMBER++;
-    string_init(&CURRENT_LINE, line, length);
     if(!line) return idx_list_len(pt->batches) - 1;
     if(IS_OUTPUT_START(line, length)){
         pt->state = OUTPUT_MODE;
@@ -109,6 +108,7 @@ ssize_t parse_tree_add_line(ParseTree pt, char* line, size_t length){
         pt->state = TEXT_MODE;
         return finishBatch;
     }
+    string_init(&CURRENT_LINE, line, length);
     if(pt->state == TEXT_MODE){
         if(*line == '$'){
             finishBatch = parse_tree_parse_command(pt, line + 1, length - 1);
@@ -200,20 +200,16 @@ static ssize_t parse_tree_parse_command(ParseTree pt,
                                         size_t length){
     ssize_t finishBatch = -1;
     Command c;
-    String s;
     if(line[0] == '|'){
-        string_init(&s, line + 1, length - 1);
-        c = command_create(s, 1);
+        c = command_create(line + 1, length - 1, 1);
         parse_tree_chain_command(pt, c);
     }else if(isdigit(line[0])){
         char* tail;
         size_t dep = (size_t) strtol(line, &tail, 10);
-        string_init(&s, tail + 1, length - ((tail + 1) - line));
-        c = command_create(s, dep);
+        c = command_create(tail + 1, length - ((tail+ 1) - line), dep);
         parse_tree_chain_command(pt, c);
     }else{
-        string_init(&s, line, length);
-        c = command_create(s, 0);
+        c = command_create(line, length, 0);
         finishBatch = idx_list_len(pt->batches) - 1;
         idx_list_append(pt->batches, ptr_list_len(pt->nodes));
     }
@@ -225,9 +221,9 @@ static ssize_t parse_tree_parse_command(ParseTree pt,
 
 /* Commands */
 
-static Command command_create(String command, size_t dependency){
+static Command command_create(char* line, size_t length, size_t dependency){
     Command c = (Command) malloc(sizeof(struct _command));
-    c->command = command;
+    string_init(&c->command, line, length);
     c->dependency = dependency;
     string_init(&c->output, NULL, 0);
     c->dependants = idx_list_create(10);
