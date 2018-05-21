@@ -5,9 +5,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-static inline char* paintMessage(char* color, char* message){
+static inline char* paintMessage(char* color, char* message, size_t len){
     size_t cLen = strlen(color);
-    size_t mLen = strlen(message);
+    size_t mLen = len;
     size_t rLen = strlen(RESET);
     char* m = malloc(sizeof(char) * (cLen + mLen + rLen + 1));
     strncpy(m, color, cLen);
@@ -18,13 +18,19 @@ static inline char* paintMessage(char* color, char* message){
 }
 
 void LOG_FATAL(char* message){
-    char* paintedMsg = paintMessage(RED, message);
+    char* paintedMsg = paintMessage(RED, message, strlen(message));
     write(2, paintedMsg, strlen(paintedMsg));
-    _exit(1);
+    free(paintedMsg);
+}
+
+void LOG_FATAL_STRING(String message){
+    char* paintedMsg = paintMessage(RED, message.s, message.length);
+    write(2, paintedMsg, strlen(paintedMsg));
+    free(paintedMsg);
 }
 
 void _log_CRITICAL(char* message){
-    char* paintedMsg = paintMessage(YELLOW, message);
+    char* paintedMsg = paintMessage(YELLOW, message, strlen(message));
     write(2, paintedMsg, strlen(paintedMsg));
     free(paintedMsg);
 }
@@ -57,7 +63,7 @@ void LOG_PARSE_ERROR(String line, int lineNumber, char* message, int errOffset){
 
 
 void LOG_WARNING(char* message){
-    char* paintedMsg = paintMessage(PURPLE, message);
+    char* paintedMsg = paintMessage(PURPLE, message, strlen(message));
     write(2, paintedMsg, strlen(paintedMsg));
     free(paintedMsg);
 }

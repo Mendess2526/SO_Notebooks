@@ -4,11 +4,18 @@
 #include "strings.h"
 
 /**
- * Logs a fatal error message and terminates the program
+ * Logs a fatal error message.
  *
  * \param message The message to log.
  */
 void LOG_FATAL(char* message);
+
+/**
+ * Logs a fatal error message.
+ *
+ * \param message The message to log.
+ */
+void LOG_FATAL_STRING(String message);
 
 /**
  * Logs a critical error and returns from the current function.

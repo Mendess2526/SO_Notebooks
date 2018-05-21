@@ -78,7 +78,9 @@ int execBatch(Command c, int* pipfd){
         int status;
         wait(&status);
         if(WIFEXITED(status) && WEXITSTATUS(status) != 0){
-            LOG_FATAL("Command failed\n");
+            LOG_FATAL("Command failed: ");
+            LOG_FATAL_STRING(command_get_command(cur));
+            LOG_FATAL("\n");
             _exit(1);
         }
         write(pipfd[1], "\0", 1); // Write the separated '\0'
