@@ -7,6 +7,15 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
+
+/**
+ * Checks if a String contains a '|' character.
+ *
+ * \param s String to check.
+ * \returns 1 if contains 0 otherwise.
+ */
+static int has_pipes(String s);
+
 /**
  * Executes a single command.
  * \param c The command to execute.
@@ -15,9 +24,14 @@
  * \param outPipes The pipes where the output is writen to.
  */
 static void execCommand(Command c,
-                               size_t i,
-                               Pipes inPipes,
-                               Pipes outPipes);
+                        size_t i,
+                        Pipes inPipes,
+                        Pipes outPipes);
+
+static void execCommandPipes(Command c,
+                             size_t i,
+                             Pipes inPipes,
+                             Pipes outPipes);
 /**
  * Writes to the input pipes of all the dependencies of the given command.
  *
@@ -28,10 +42,10 @@ static void execCommand(Command c,
  * \param i The position of the command in the batch.
  */
 static void writeToPipes(Command c,
-                                Pipes inPipes,
-                                char* buf,
-                                size_t n,
-                                size_t i);
+                         Pipes inPipes,
+                         char* buf,
+                         size_t n,
+                         size_t i);
 /**
  * Closes the input pipes of all the dependencies of the given command.
  *
@@ -39,9 +53,7 @@ static void writeToPipes(Command c,
  * \param inPipes The pipes to close.
  * \param i The position of the command in the batch.
  */
-static void closePipes(Command c,
-                              Pipes inPipes,
-                              size_t i);
+static void closePipes(Command c, Pipes inPipes, size_t i);
 
 int execBatch(Command c, int* pipfd){
     int pid = fork();
@@ -55,8 +67,10 @@ int execBatch(Command c, int* pipfd){
     for(size_t i = 0; cur; cur = command_pipe(cur), i++){
         if(i > 0) pipes_append(inPipes);
         pipes_append(outPipes);
-
-        execCommand(cur, i, inPipes, outPipes);
+        if(has_pipes(command_get_command(cur)))
+            execCommandPipes(cur, i, inPipes, outPipes);
+        else
+            execCommand(cur, i, inPipes, outPipes);
     }
 
     size_t cmdCount = pipes_len(outPipes);
@@ -92,6 +106,12 @@ int execBatch(Command c, int* pipfd){
     _exit(0);
 }
 
+int has_pipes(String s){
+    for(size_t i = 0; i < s.length; i++)
+        if(s.s[i] == '|') return 1;
+    return 0;
+}
+
 void execCommand(Command c, size_t i, Pipes inPipes, Pipes outPipes){
     if(!fork()){
         if(i > 0){ // Redirect input to pipe and close write side of pipe
@@ -108,6 +128,44 @@ void execCommand(Command c, size_t i, Pipes inPipes, Pipes outPipes){
         char** command = words(cmd.s, cmd.length);
         execvp(command[0], command);
         _exit(1);
+    }
+}
+
+void execCommandPipes(Command c, size_t i, Pipes inPipes, Pipes outPipes){
+    if(!fork()){
+        if(i > 0){
+            dup2(pipes_index(inPipes, i - 1)[0], 0);
+            close(pipes_index(inPipes, i - 1)[0]);
+            for(size_t j = i; j > 0; j--)
+                close(pipes_index(inPipes, j - 1)[1]);
+        }
+        String s = command_get_command(c);
+        char* cmds = malloc(sizeof(char) * (s.length + 1));
+        strncpy(cmds, s.s, s.length);
+        cmds[s.length] = '\0';
+        int prePipe = -1;
+        int posPipe[2];
+        char* cmd;
+        for(cmd = strtok(cmds, "|"); cmd != NULL; cmd = strtok(NULL, "|")){
+            pipe(posPipe);
+            if(!fork()){
+                char** command = words(cmd, strlen(cmd));
+                if(prePipe != -1) dup2(prePipe, 0);
+                if(strstr(cmd,"|") != NULL){
+                    dup2(pipes_index(outPipes, i)[1], 1);
+                    close(pipes_index(outPipes, i)[1]);
+                }else{
+                    dup2(posPipe[1], 1);
+                }
+                close(posPipe[1]);
+                close(posPipe[0]);
+                execvp(command[0], command);
+                _exit(1);
+            }
+            close(posPipe[1]);
+            if(prePipe == -1) close(prePipe);
+            prePipe = posPipe[0];
+        }
     }
 }
 
