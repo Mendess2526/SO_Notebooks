@@ -132,41 +132,46 @@ void execCommand(Command c, size_t i, Pipes inPipes, Pipes outPipes){
 }
 
 void execCommandPipes(Command c, size_t i, Pipes inPipes, Pipes outPipes){
-    if(!fork()){
-        if(i > 0){
-            dup2(pipes_index(inPipes, i - 1)[0], 0);
-            close(pipes_index(inPipes, i - 1)[0]);
-            for(size_t j = i; j > 0; j--)
-                close(pipes_index(inPipes, j - 1)[1]);
-        }
-        String s = command_get_command(c);
-        char* cmds = malloc(sizeof(char) * (s.length + 1));
-        strncpy(cmds, s.s, s.length);
-        cmds[s.length] = '\0';
-        int prePipe = -1;
-        int posPipe[2];
-        char* cmd;
-        for(cmd = strtok(cmds, "|"); cmd != NULL; cmd = strtok(NULL, "|")){
-            pipe(posPipe);
-            if(!fork()){
-                char** command = words(cmd, strlen(cmd));
-                if(prePipe != -1) dup2(prePipe, 0);
-                if(strstr(cmd,"|") != NULL){
-                    dup2(pipes_index(outPipes, i)[1], 1);
-                    close(pipes_index(outPipes, i)[1]);
-                }else{
-                    dup2(posPipe[1], 1);
-                }
-                close(posPipe[1]);
-                close(posPipe[0]);
-                execvp(command[0], command);
-                _exit(1);
-            }
-            close(posPipe[1]);
-            if(prePipe == -1) close(prePipe);
-            prePipe = posPipe[0];
-        }
+    if(fork()) return;
+    if(i > 0){
+        dup2(pipes_index(inPipes, i - 1)[0], 0);
+        close(pipes_index(inPipes, i - 1)[0]);
+        for(size_t j = i; j > 0; j--)
+            close(pipes_index(inPipes, j - 1)[1]);
     }
+    String s = command_get_command(c);
+    char* cmds = malloc(sizeof(char) * (s.length + 1));
+    strncpy(cmds, s.s, s.length);
+    cmds[s.length] = '\0';
+    int prePipe = -1;
+    int posPipe[2];
+    char* cmd;
+    PtrList cmdsArray = ptr_list_create(4);
+    for(cmd = strtok(cmds, "|"); cmd != NULL; cmd = strtok(NULL, "|")){
+        ptr_list_append(cmdsArray, cmd);
+    }
+    for(size_t j = 0; j < ptr_list_len(cmdsArray); j++){
+        pipe(posPipe);
+        if(!fork()){
+            char* c = ptr_list_index(cmdsArray, j);
+            char** command = words(c, strlen(c));
+            if(prePipe != -1) dup2(prePipe, 0);
+            if(j >= ptr_list_len(cmdsArray) - 1){
+                dup2(pipes_index(outPipes, i)[1], 1);
+            }else{
+                dup2(posPipe[1], 1);
+            }
+            close(pipes_index(outPipes, i)[1]);
+            close(posPipe[1]);
+            close(posPipe[0]);
+            execvp(command[0], command);
+            _exit(1);
+        }
+        close(posPipe[1]);
+        if(prePipe != -1) close(prePipe);
+        prePipe = posPipe[0];
+    }
+    _exit(0);
 }
 
 void writeToPipes(Command c, Pipes inPipes, char* buf, size_t n, size_t i){
