@@ -1,0 +1,6 @@
+Este comando lista os ficheiros:
+$ grep -v ˆ# /etc/passwd | cut -f7 -d: | uniq
+Agora podemos ordenar estes ficheiros:
+$| wc -l
+Break batch:
+$ whoami

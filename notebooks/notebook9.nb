@@ -1,0 +1,6 @@
+Este comando lista os ficheiros:
+$ ls & ps
+Agora podemos ordenar estes ficheiros:
+$| wc
+Break batch:
+$ whoami
