@@ -17,18 +17,46 @@
 static int has_pipes(String s);
 
 /**
+ * Checks if a String contains a '$' character.
+ *
+ * \param s String to check
+ * \returns 1 if contains 0 otherwise.
+ */
+static int has_paralel(String s);
+
+/**
  * Executes a single command.
- * \param c The command to execute.
+ * \param cmd The command to execute.
  * \param i The index of the pipe it's input and output is gotten from.
  * \param inPipes The pipes where the input comes from.
  * \param outPipes The pipes where the output is writen to.
  */
-static void execCommand(Command c,
+static void execCommand(String cmd,
                         size_t i,
                         Pipes inPipes,
                         Pipes outPipes);
 
-static void execCommandPipes(Command c,
+/**
+ * Executes a list of commands in paralel, distributing the input
+ * and aggregating de output.
+ * \param cmd The list of commands to execute
+ * \param i The index of the pipe it's input and output is gotten from.
+ * \param inPipes The pipes where the input comes from.
+ * \param outPipes The pipes where the output is writen to.
+ */
+static void execCommandParalel(String cmd,
+                                size_t i,
+                                Pipes inPipes,
+                                Pipes outPipes);
+
+/**
+ * Executes a line of piped commands
+ * \param cmd The line of piped commands
+ * \param i The index of the pipe it's input and output is gotten from.
+ * \param inPipes The pipes where the input comes from.
+ * \param outPipes The pipes where the output is writen to.
+ */
+static void execCommandPipes(String cmd,
                              size_t i,
                              Pipes inPipes,
                              Pipes outPipes);
@@ -67,16 +95,18 @@ int execBatch(Command c, int* pipfd){
     for(size_t i = 0; cur; cur = command_pipe(cur), i++){
         if(i > 0) pipes_append(inPipes);
         pipes_append(outPipes);
-        if(has_pipes(command_get_command(cur)))
-            execCommandPipes(cur, i, inPipes, outPipes);
+        String cmd = command_get_command(cur);
+        if(has_paralel(cmd))
+            execCommandParalel(cmd, i, inPipes, outPipes);
+        else if(has_pipes(cmd))
+            execCommandPipes(cmd, i, inPipes, outPipes);
         else
-            execCommand(cur, i, inPipes, outPipes);
+            execCommand(cmd, i, inPipes, outPipes);
+        if(i > 0) close(pipes_index(inPipes, i - 1)[0]);
+        close(pipes_index(outPipes, i)[1]);
     }
 
     size_t cmdCount = pipes_len(outPipes);
-    for(size_t i = 0; i < cmdCount; i++){
-        close(pipes_index(outPipes, i)[1]);
-    }
     cur = c;
     for(size_t i = 0; i < cmdCount && cur; i++, cur = command_pipe(cur)){
         ssize_t n;
@@ -112,26 +142,90 @@ int has_pipes(String s){
     return 0;
 }
 
-void execCommand(Command c, size_t i, Pipes inPipes, Pipes outPipes){
-    if(!fork()){
-        if(i > 0){ // Redirect input to pipe and close write side of pipe
-            dup2(pipes_index(inPipes, i - 1)[0], 0);
-            close(pipes_index(inPipes, i - 1)[0]);
-            for(size_t j = i; j > 0; j--)
-                close(pipes_index(inPipes, j - 1)[1]);
-        }
-        dup2(pipes_index(outPipes, i)[1], 1); // Redirect output to pipe
-        for(ssize_t j = i; j >= 0; j--)
-            close(pipes_index(outPipes, (size_t) j)[1]);
-
-        String cmd = command_get_command(c);
-        char** command = words(cmd.s, cmd.length);
-        execvp(command[0], command);
-        _exit(1);
-    }
+int has_paralel(String s){
+    for(size_t i = 0; i < s.length; i++)
+        if(s.s[i] == '&') return 1;
+    return 0;
 }
 
-void execCommandPipes(Command c, size_t i, Pipes inPipes, Pipes outPipes){
+void execCommand(String cmd, size_t i, Pipes inPipes, Pipes outPipes){
+    if(fork()) return;
+    if(i > 0){ // Redirect input to pipe and close write side of pipe
+        dup2(pipes_index(inPipes, i - 1)[0], 0);
+        close(pipes_index(inPipes, i - 1)[0]);
+        for(size_t j = i; j > 0; j--)
+            close(pipes_index(inPipes, j - 1)[1]);
+    }
+    dup2(pipes_index(outPipes, i)[1], 1); // Redirect output to pipe
+    close(pipes_index(outPipes, i)[1]);
+    close(pipes_index(outPipes, i)[0]);
+    char** command = words(cmd.s, cmd.length);
+    execvp(command[0], command);
+    _exit(1);
+}
+
+void execCommandParalel(String cmd, size_t i, Pipes inPipes, Pipes outPipes){
+    // Close what I don't need
+    if(fork()) return;
+    if(i > 0){
+        for(size_t j = i; j > 0; j--)
+            close(pipes_index(inPipes, j - 1)[1]);
+    }
+    close(pipes_index(outPipes, i)[0]);
+    // Create the inner pipes
+    Pipes innerInPipes = pipes_create(2);
+    Pipes innerOutPipes = pipes_create(2); pipes_append(innerOutPipes);
+    pipes_close(innerOutPipes, 0);
+    // Prepare the command string for tokenizing
+    char* line = malloc(sizeof(char) * (cmd.length + 1));
+    strncpy(line, cmd.s, cmd.length); line[cmd.length] = '\0';
+    // Execute every token
+    size_t j = 1;
+    for(char* cmd = strtok(line, "&"); cmd != NULL; cmd = strtok(NULL, "&")){
+        pipes_append(innerInPipes);
+        pipes_append(innerOutPipes);
+        String c;
+        string_init(&c, cmd, strlen(cmd));
+        if(has_pipes(c))
+            execCommandPipes(c, j, innerInPipes, innerOutPipes);
+        else
+            execCommand(c, j, innerInPipes, innerOutPipes);
+        close(pipes_index(innerInPipes, j - 1)[0]);
+        close(pipes_index(innerOutPipes, j)[1]);
+        j++;
+    }
+    ssize_t n;
+    char buf[1024];
+    if(i > 0){
+        dup2(pipes_index(inPipes, i - 1)[0], 0);
+        close(pipes_index(inPipes, i - 1)[0]);
+        while((n = read(0, buf, 1024)) > 0){
+            for(size_t k = 0; k < pipes_len(innerInPipes); k++){
+                write(pipes_index(innerInPipes, k)[1], buf, n);
+            }
+        }
+        for(size_t k = 0; k < pipes_len(innerInPipes); k++)
+            close(pipes_index(innerInPipes, k)[1]);
+    }
+    dup2(pipes_index(outPipes, i)[1], 1);
+    close(pipes_index(outPipes, i)[1]);
+    for(size_t k = 1; k < pipes_len(innerOutPipes); k++){
+        while((n = read(pipes_index(innerOutPipes, k)[0], buf, 1024)) > 0){
+            write(1, buf, n);
+        }
+        int status;
+        wait(&status);
+        if(WIFEXITED(status) && WEXITSTATUS(status) != 0){
+            LOG_FATAL("Command failed: ");
+            LOG_FATAL_STRING(cmd);
+            LOG_FATAL("\n");
+            _exit(1);
+        }
+    }
+    _exit(0);
+}
+
+void execCommandPipes(String cmd, size_t i, Pipes inPipes, Pipes outPipes){
     if(fork()) return;
     if(i > 0){
         dup2(pipes_index(inPipes, i - 1)[0], 0);
@@ -139,16 +233,14 @@ void execCommandPipes(Command c, size_t i, Pipes inPipes, Pipes outPipes){
         for(size_t j = i; j > 0; j--)
             close(pipes_index(inPipes, j - 1)[1]);
     }
-    String s = command_get_command(c);
-    char* cmds = malloc(sizeof(char) * (s.length + 1));
-    strncpy(cmds, s.s, s.length);
-    cmds[s.length] = '\0';
+    char* cmds = malloc(sizeof(char) * (cmd.length + 1));
+    strncpy(cmds, cmd.s, cmd.length);
+    cmds[cmd.length] = '\0';
     int prePipe = -1;
     int posPipe[2];
-    char* cmd;
     PtrList cmdsArray = ptr_list_create(4);
-    for(cmd = strtok(cmds, "|"); cmd != NULL; cmd = strtok(NULL, "|")){
-        ptr_list_append(cmdsArray, cmd);
+    for(char* c = strtok(cmds, "|"); c != NULL; c = strtok(NULL, "|")){
+        ptr_list_append(cmdsArray, c);
     }
     for(size_t j = 0; j < ptr_list_len(cmdsArray); j++){
         pipe(posPipe);

@@ -15,6 +15,8 @@ size_t pipes_len(Pipes p);
 
 int* pipes_last(Pipes p);
 
+void pipes_close(Pipes p, size_t i);
+
 void pipes_free(Pipes p);
 
 #endif

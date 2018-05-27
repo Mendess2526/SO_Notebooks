@@ -49,7 +49,6 @@ int main(int argc, char** argv){
     Pipes pipes = pipes_create(20);
     IdxList pids = idx_list_create(20);
     ParseTree pt = parse_and_exec(fd, pipes, pids);
-    close(fd);
 
     // Read outputs and write store them in the batches
     pid_t pid;
@@ -120,6 +119,7 @@ ParseTree parse_and_exec(int fd, Pipes pipes, IdxList pids){
         }
         free(buff);
     }while(NULL != buff);
+    close(fd);
     for(size_t i = 0; i < batchCount; i++){
         pipes_append(pipes);
         pid_t pid = execBatch(parse_tree_get_batch(pt, i),

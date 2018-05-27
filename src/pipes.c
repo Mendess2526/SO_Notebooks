@@ -44,6 +44,13 @@ int* pipes_last(Pipes p){
     return p->pipes[p->load - 1];
 }
 
+void pipes_close(Pipes p, size_t i){
+    if(p->load > i){
+        close(p->pipes[i][0]);
+        close(p->pipes[i][1]);
+    }
+}
+
 void pipes_free(Pipes p){
     for(size_t i = 0; i < p->load; i++)
         free(p->pipes[i]);
