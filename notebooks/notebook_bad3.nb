@@ -7,4 +7,4 @@ $ whoam
 E escolher o primeiro do ls:
 $3| head -1
 Grep do sort
-$3| grep notebook
+$3| grep .c

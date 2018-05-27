@@ -7,4 +7,4 @@ $2| head -5
 Tail do anterior
 $| tail -1
 Grep do ls
-$4| grep notebook
+$4| grep .c
