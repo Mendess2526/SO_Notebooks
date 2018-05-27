@@ -185,11 +185,11 @@ void execCommandParalel(String cmd, size_t i, Pipes inPipes, Pipes outPipes){
         ptr_list_append(cmdsArray, c);
     }
     ptr_list_append(cmdsArray, NULL);
-    for(size_t j = 1; ptr_list_index(cmdsArray, j) != NULL; j++){
+    for(size_t j = 1; ptr_list_index(cmdsArray, j - 1) != NULL; j++){
         pipes_append(innerInPipes);
         pipes_append(innerOutPipes);
         String c;
-        char* cmd = ptr_list_index(cmdsArray, j);
+        char* cmd = ptr_list_index(cmdsArray, j - 1);
         string_init(&c, cmd, strlen(cmd));
         if(has_pipes(c))
             execCommandPipes(c, j, innerInPipes, innerOutPipes);

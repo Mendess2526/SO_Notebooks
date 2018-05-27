@@ -1,5 +1,5 @@
 LS para dois
 $ ls
-$| grep notebook & wc
+$| grep .c & wc
 Sort
 $| sort
