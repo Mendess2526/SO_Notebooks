@@ -39,12 +39,12 @@ void LOG_PARSE_ERROR(String line, int lineNumber, char* message, int errOffset){
     char lineN[12];
     size_t lineNlen = int2string(lineNumber, lineN, 12);
     size_t totalLen =
-            strlen(BOLD) + strlen("line ") + lineNlen
+            strlen(BOLD) + strlen("line ") + lineNlen + 1
             + strlen(": " RED "error: " RESET) + strlen(message) +
             strlen("\n\t")
             + line.length + strlen("\n")
             + strlen("\t") + strlen(" ") * errOffset +
-            strlen(GREEN "^" RESET "\n");
+            strlen(GREEN "^" RESET "\n") + strlen("\0");
     char* output = malloc(sizeof(char) * totalLen);
     strcat(output, BOLD "line ");
     strncat(output, lineN, lineNlen);

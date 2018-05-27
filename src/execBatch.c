@@ -121,7 +121,7 @@ int execBatch(Command c, int* pipfd){
         }
         int status;
         wait(&status);
-        if(WIFEXITED(status) && WEXITSTATUS(status) != 0){
+        if(!WIFEXITED(status) || WEXITSTATUS(status) != 0){
             LOG_FATAL("Command failed: ");
             LOG_FATAL_STRING(command_get_command(cur));
             LOG_FATAL("\n");
@@ -180,11 +180,16 @@ void execCommandParalel(String cmd, size_t i, Pipes inPipes, Pipes outPipes){
     char* line = malloc(sizeof(char) * (cmd.length + 1));
     strncpy(line, cmd.s, cmd.length); line[cmd.length] = '\0';
     // Execute every token
-    size_t j = 1;
-    for(char* cmd = strtok(line, "&"); cmd != NULL; cmd = strtok(NULL, "&")){
+    PtrList cmdsArray = ptr_list_create(4);
+    for(char* c = strtok(line, "&"); c != NULL; c = strtok(NULL, "&")){
+        ptr_list_append(cmdsArray, c);
+    }
+    ptr_list_append(cmdsArray, NULL);
+    for(size_t j = 1; ptr_list_index(cmdsArray, j) != NULL; j++){
         pipes_append(innerInPipes);
         pipes_append(innerOutPipes);
         String c;
+        char* cmd = ptr_list_index(cmdsArray, j);
         string_init(&c, cmd, strlen(cmd));
         if(has_pipes(c))
             execCommandPipes(c, j, innerInPipes, innerOutPipes);
@@ -192,7 +197,6 @@ void execCommandParalel(String cmd, size_t i, Pipes inPipes, Pipes outPipes){
             execCommand(c, j, innerInPipes, innerOutPipes);
         close(pipes_index(innerInPipes, j - 1)[0]);
         close(pipes_index(innerOutPipes, j)[1]);
-        j++;
     }
     ssize_t n;
     char buf[1024];
@@ -215,9 +219,9 @@ void execCommandParalel(String cmd, size_t i, Pipes inPipes, Pipes outPipes){
         }
         int status;
         wait(&status);
-        if(WIFEXITED(status) && WEXITSTATUS(status) != 0){
-            LOG_FATAL("Command failed: ");
-            LOG_FATAL_STRING(cmd);
+        if(!WIFEXITED(status) || WEXITSTATUS(status) != 0){
+            LOG_FATAL("Paralel Command failed: ");
+            LOG_FATAL(ptr_list_index(cmdsArray, k - 1));
             LOG_FATAL("\n");
             _exit(1);
         }
