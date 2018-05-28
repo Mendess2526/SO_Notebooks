@@ -27,7 +27,7 @@ char* readLn(int fd, size_t* nBytes){
     return buff;
 }
 
-char** words(char* string, size_t len){
+char** words(const char* string, size_t len){
     char* command = malloc(sizeof(char) * len + 1);
     strncpy(command, string, len);
     command[len] = '\0';
@@ -36,14 +36,15 @@ char** words(char* string, size_t len){
     int i = 0;
     char* token = strtok(command, " ");
     do{
-        if(i >= argc)
+        if(i >= argc - 1)
             argv = realloc(argv, (argc *= 2) * sizeof(char*));
 
-        argv[i++] = token;
+        argv[i++] = str_dup(token);
 
         token = strtok(NULL, " ");
     }while(token);
     argv[i] = NULL;
+    free(command);
     return argv;
 }
 
@@ -66,3 +67,24 @@ size_t int2string(int num, char* string, size_t len){
     }
     return r;
 }
+
+char* str_n_dup(const char* str, size_t len){
+    char* s = malloc(sizeof(char) * len);
+    strncpy(s, str, len);
+    return s;
+}
+
+char* str_dup(const char* str){
+    return str_n_dup(str, strlen(str) + 1);
+}
+
+char* strnstr(const char* haystack, const char* needle, size_t n){
+    for(size_t i = 0; i < n; i++){
+        int succeded = 1;
+        for(size_t j = i, k = 0; succeded && j < n && needle[k]; j++, k++)
+            if(haystack[j] != needle[k]) succeded = 0;
+        if(succeded) return (char*) &haystack[i];
+    }
+    return NULL;
+}
+

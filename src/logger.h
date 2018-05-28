@@ -49,4 +49,11 @@ void LOG_PARSE_ERROR(String line, int lineNumber, char* message, int errOffset);
  */
 void LOG_WARNING(char* message);
 
+/**
+ * Logs a warning message.
+ *
+ * \param message The message to log.
+ */
+void LOG_WARNING_STRING(String message);
+
 #endif /* LOGGER_H */

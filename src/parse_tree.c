@@ -16,7 +16,6 @@
     ((len) > 2 && 0 == strncmp(line, OUTPUT_END, 3))
 
 /* Commands */
-
 struct _command{
     size_t dependency;
     String command;
@@ -156,14 +155,6 @@ static void parse_tree_add_command(ParseTree pt, Command command){
     ptr_list_append(pt->nodes, tree_node_create_command(command));
 }
 
-/*
-static Node last_command_node(ParseTree pt){
-    ssize_t idx = idx_list_last(pt->batches);
-    if(idx < 0) return NULL;
-    return ptr_list_index(pt->nodes, (size_t) idx);
-}
-*/
-
 static Node get_dependency_node(ParseTree pt, size_t dependency){
     size_t idx = idx_list_index(pt->commands,
                                 idx_list_len(pt->commands) - dependency);
@@ -173,6 +164,7 @@ static Node get_dependency_node(ParseTree pt, size_t dependency){
 static void parse_tree_chain_command(ParseTree pt, Command command){
     Node n = get_dependency_node(pt, command->dependency);
     Command cur = NULL;
+    char* error;
     if(n == NULL){
         LOG_PARSE_ERROR(CURRENT_LINE,
                 LINE_NUMBER,
@@ -183,6 +175,11 @@ static void parse_tree_chain_command(ParseTree pt, Command command){
         LOG_WARNING("Chaining to comment node\n");
     }else if(NULL == (cur = n->c.command)){
         LOG_WARNING("Chaining to null command\n");
+    }else if((error = strnstr(cur->command.s, ">", cur->command.length)) != NULL
+            && strnstr(cur->command.s, "2>", cur->command.length) == NULL){
+        LOG_PARSE_ERROR(CURRENT_LINE, LINE_NUMBER,
+                "Can't write to pipe and file at the same time", 1);
+        _exit(1);
     }else{
         Command dep = cur;
         size_t offset = 1;
@@ -203,7 +200,12 @@ static ssize_t parse_tree_parse_command(ParseTree pt,
     }else if(isdigit(line[0])){
         char* tail;
         size_t dep = (size_t) strtol(line, &tail, 10);
-        c = command_create(tail + 1, length - ((tail+ 1) - line), dep);
+        if(*tail != '|'){
+            LOG_PARSE_ERROR(CURRENT_LINE, LINE_NUMBER, "Missing pipe",
+                            (tail + 1) - line);
+            _exit(1);
+        }
+        c = command_create(tail + 1, length - ((tail + 1) - line), dep);
         parse_tree_chain_command(pt, c);
     }else{
         c = command_create(line, length, 0);
@@ -218,11 +220,17 @@ static ssize_t parse_tree_parse_command(ParseTree pt,
 }
 
 /* Commands */
-
 static Command command_create(char* line, size_t length, size_t dependency){
     Command c = (Command) malloc(sizeof(struct _command));
-    string_init(&c->command, line, length);
+    char* error;
+    if(dependency != 0 && (error = strnstr(line, "<", length)) != NULL){
+        LOG_PARSE_ERROR(CURRENT_LINE, LINE_NUMBER,
+                        "Can't read from pipe and file at the same time",
+                        error - line);
+        _exit(1);
+    }
     c->dependency = dependency;
+    string_init(&c->command, line, length);
     string_init(&c->output, NULL, 0);
     c->dependants = idx_list_create(10);
     c->pipe = NULL;
@@ -415,16 +423,10 @@ void printComment(Comment c){
     c->comment.length = length;
 }
 
-char* str_n_dup(char* str, size_t len){
-    char* s = malloc(sizeof(char) * len);
-    strncpy(s, str, len);
-    return s;
-}
+#define APPENDS(boolean) ((boolean) ? ">>" : ">")
 
 void printCommand(Command c){
     static int notFirst;
-    size_t length = c->command.length;
-    c->command.s[c->command.length] = '\0';
     printf(BLUE);
     if(notFirst)
         printf("\t");
@@ -434,28 +436,30 @@ void printCommand(Command c){
     printf("\t$");
     if(c->dependency > 1) printf("%ld", c->dependency);
     if(c->dependency) printf("|");
-    printf("%s " RESET, c->command.s);
+    char* cmd = malloc(sizeof(char) * (c->command.length + 1));
+    strncpy(cmd, c->command.s, c->command.length);
+    cmd[c->command.length] = '\0';
+    printf("%s " RESET, cmd);
 
     printf("\n");
-    c->command.length = length; // Fix cheating
     if(c->output.s){
         printf(RED "\t\t>>>\n");
-        length = c->output.length;
-        c->output.s[c->output.length] = '\0';
-        char* out = str_n_dup(c->output.s, c->output.length);
+        char* out = malloc(sizeof(char) * (c->output.length + 1));
+        out[c->output.length] = '\0';
         char* tk = strtok(out, "\n");
         do{
             printf("\t\t%s\n", tk);
             tk = strtok(NULL, "\n");
         }while(tk && tk[0] != '\n');
         free(out);
-        c->output.length = length;
         printf("\t\t<<<\n" RESET);
     }
+
     if(idx_list_len(c->dependants) > 0){
         printf("\t\t");
-        for(size_t i = 0; i < idx_list_len(c->dependants); i++){
-            printf(RED "%ld " RESET, idx_list_index(c->dependants, i));
+        if(idx_list_len(c->dependants) > 0){
+            for(size_t i = 0; i < idx_list_len(c->dependants); i++)
+                printf(RED "%ld " RESET, idx_list_index(c->dependants, i));
         }
         printf("\n");
     }

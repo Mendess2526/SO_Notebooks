@@ -61,6 +61,11 @@ void LOG_PARSE_ERROR(String line, int lineNumber, char* message, int errOffset){
     free(output);
 }
 
+void LOG_WARNING_STRING(String message){
+    char* paintedMsg = paintMessage(PURPLE, message.s, message.length);
+    write(2, paintedMsg, strlen(paintedMsg));
+    free(paintedMsg);
+}
 
 void LOG_WARNING(char* message){
     char* paintedMsg = paintMessage(PURPLE, message, strlen(message));

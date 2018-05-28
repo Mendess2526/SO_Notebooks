@@ -6,7 +6,9 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/wait.h>
-
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 /**
  * Checks if a String contains a '|' character.
@@ -23,6 +25,13 @@ static int has_pipes(String s);
  * \returns 1 if contains 0 otherwise.
  */
 static int has_paralel(String s);
+
+/**
+ * Removes redirections from a command.
+ *
+ * \param words The array of strings
+ */
+static void cleanCommand(char** words);
 
 /**
  * Executes a single command.
@@ -121,7 +130,7 @@ int execBatch(Command c, int* pipfd){
         }
         int status;
         wait(&status);
-        if(!WIFEXITED(status) || WEXITSTATUS(status) != 0){
+        if(!WIFEXITED(status)){
             LOG_FATAL("Command failed: ");
             LOG_FATAL_STRING(command_get_command(cur));
             LOG_FATAL("\n");
@@ -144,22 +153,113 @@ int has_pipes(String s){
 
 int has_paralel(String s){
     for(size_t i = 0; i < s.length; i++)
-        if(s.s[i] == '&') return 1;
+        if(s.s[i] == '&' && s.length > i + 1 && s.s[i+1] != '>') return 1;
     return 0;
+}
+
+typedef struct _redirects{
+    char* std_out;
+    short append_out;
+    char* std_err;
+    short append_err;
+    char* std_in;
+}Redirects;
+
+static void command_parse_redirects(Redirects* redirects,
+                                    const char* line,
+                                    size_t len){
+    char** tokens = words(line, len);
+    size_t i = 0;
+    while(tokens[i]){
+        if(!strcmp(tokens[i], "<")){
+            free(tokens[i++]);
+            redirects->std_in = str_dup(tokens[i]);
+        }else if(!strcmp(tokens[i], ">")){
+            free(tokens[i++]);
+            redirects->std_out = str_dup(tokens[i]);
+            redirects->append_out = 0;
+        }else if(!strcmp(tokens[i], ">>")){
+            free(tokens[i++]);
+            redirects->std_out = str_dup(tokens[i]);
+            redirects->append_out = 1;
+        }else if(!strcmp(tokens[i], "2>")){
+            free(tokens[i++]);
+            redirects->std_err = str_dup(tokens[i]);
+            redirects->append_err = 0;
+        }else if(!strcmp(tokens[i], "2>>")){
+            free(tokens[i++]);
+            redirects->std_err = str_dup(tokens[i]);
+            redirects->append_out = 1;
+        }else if(!strcmp(tokens[i], "&>")){
+            free(tokens[i++]);
+            redirects->std_out = str_dup(tokens[i]);
+            redirects->std_err = str_dup(tokens[i]);
+            redirects->append_out = redirects->append_err = 0;
+        }else if(!strcmp(tokens[i], "&>>")){
+            free(tokens[i++]);
+            redirects->std_out = str_dup(tokens[i]);
+            redirects->std_err = str_dup(tokens[i]);
+            redirects->append_out = redirects->append_err = 1;
+        }
+        free(tokens[i++]);
+    }
+    free(tokens);
+}
+
+void cleanCommand(char** words){
+    for(size_t i = 0; words[i]; i++){
+        if(strstr(words[i], "<") != NULL || strstr(words[i], ">") != NULL){
+            words[i] = NULL;
+            return;
+        }
+    }
 }
 
 void execCommand(String cmd, size_t i, Pipes inPipes, Pipes outPipes){
     if(fork()) return;
+    Redirects redirects = {0};
+    command_parse_redirects(&redirects, cmd.s, cmd.length);
+    if(redirects.std_in){
+        int in = open(redirects.std_in, O_RDONLY);
+        if(in < 0){
+            LOG_WARNING_STRING(cmd);
+            LOG_WARNING(": no such file or directory: ");
+            LOG_WARNING(redirects.std_in);
+            LOG_WARNING("\n");
+            _exit(1);
+        }
+        dup2(in, 0);
+        close(in);
+    }
     if(i > 0){ // Redirect input to pipe and close write side of pipe
-        dup2(pipes_index(inPipes, i - 1)[0], 0);
+        if(!redirects.std_in) dup2(pipes_index(inPipes, i - 1)[0], 0);
         close(pipes_index(inPipes, i - 1)[0]);
         for(size_t j = i; j > 0; j--)
             close(pipes_index(inPipes, j - 1)[1]);
     }
-    dup2(pipes_index(outPipes, i)[1], 1); // Redirect output to pipe
+    if(redirects.std_out){
+        int flags = redirects.append_out
+            ? O_WRONLY | O_APPEND | O_CREAT
+            : O_WRONLY | O_TRUNC  | O_CREAT;
+        int out = open(redirects.std_out, flags, 0664);
+        dup2(out, 1);
+        close(out);
+    }else{
+        dup2(pipes_index(outPipes, i)[1], 1); // Redirect output to pipe
+    }
     close(pipes_index(outPipes, i)[1]);
     close(pipes_index(outPipes, i)[0]);
+    if(redirects.std_err){
+        int flags = redirects.append_err
+            ? O_WRONLY | O_APPEND | O_CREAT
+            : O_WRONLY | O_TRUNC  | O_CREAT;
+        int err = open(redirects.std_err, flags, 0664);
+        dup2(err, 2);
+        close(err);
+    }
+
     char** command = words(cmd.s, cmd.length);
+    cleanCommand(command);
     execvp(command[0], command);
     _exit(1);
 }
@@ -219,7 +319,7 @@ void execCommandParalel(String cmd, size_t i, Pipes inPipes, Pipes outPipes){
         }
         int status;
         wait(&status);
-        if(!WIFEXITED(status) || WEXITSTATUS(status) != 0){
+        if(!WIFEXITED(status)){
             LOG_FATAL("Paralel Command failed: ");
             LOG_FATAL(ptr_list_index(cmdsArray, k - 1));
             LOG_FATAL("\n");
