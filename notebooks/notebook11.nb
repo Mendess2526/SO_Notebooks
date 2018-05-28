@@ -1,0 +1,8 @@
+Redireciona output:
+$ ls > outLS
+Redireciona input:
+$ wc < /etc/passwd
+Redireciona stderr:
+$ ls /etc/ 2> errLS
+Redireciona output e stderr:
+$ ls /etc/ &> outAndErrLS
