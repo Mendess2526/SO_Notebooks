@@ -281,9 +281,15 @@ void execCommandParalel(String cmd, size_t i, Pipes inPipes, Pipes outPipes){
     strncpy(line, cmd.s, cmd.length); line[cmd.length] = '\0';
     // Execute every token
     PtrList cmdsArray = ptr_list_create(4);
-    for(char* c = strtok(line, "&"); c != NULL; c = strtok(NULL, "&")){
-        ptr_list_append(cmdsArray, c);
-    }
+    char* cur = line;
+    char* c = strstr(line, "& ");
+    while(c != NULL){
+        *c = '\0';
+        ptr_list_append(cmdsArray, cur);
+        cur = c + 2;
+        c = strstr(cur, "& ");
+    };
+    ptr_list_append(cmdsArray, cur);
     ptr_list_append(cmdsArray, NULL);
     for(size_t j = 1; ptr_list_index(cmdsArray, j - 1) != NULL; j++){
         pipes_append(innerInPipes);
