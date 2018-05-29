@@ -261,6 +261,7 @@ void execCommand(String cmd, size_t i, Pipes inPipes, Pipes outPipes){
     char** command = words(cmd.s, cmd.length);
     cleanCommand(command);
     execvp(command[0], command);
+    kill(getpid(), SIGKILL);
     _exit(1);
 }
 
@@ -367,6 +368,7 @@ void execCommandPipes(String cmd, size_t i, Pipes inPipes, Pipes outPipes){
             close(posPipe[1]);
             close(posPipe[0]);
             execvp(command[0], command);
+            kill(getpid(), SIGKILL);
             _exit(1);
         }
         close(posPipe[1]);
