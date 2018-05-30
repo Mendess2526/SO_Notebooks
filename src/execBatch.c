@@ -24,7 +24,7 @@ static int has_pipes(String s);
  * \param s String to check
  * \returns 1 if contains 0 otherwise.
  */
-static int has_paralel(String s);
+static int has_parallel(String s);
 
 /**
  * Removes redirections from a command.
@@ -46,14 +46,14 @@ static void execCommand(String cmd,
                         Pipes outPipes);
 
 /**
- * Executes a list of commands in paralel, distributing the input
+ * Executes a list of commands in parallel, distributing the input
  * and aggregating de output.
  * \param cmd The list of commands to execute
  * \param i The index of the pipe it's input and output is gotten from.
  * \param inPipes The pipes where the input comes from.
  * \param outPipes The pipes where the output is writen to.
  */
-static void execCommandParalel(String cmd,
+static void execCommandParallel(String cmd,
                                 size_t i,
                                 Pipes inPipes,
                                 Pipes outPipes);
@@ -105,8 +105,8 @@ int execBatch(Command c, int* pipfd){
         if(i > 0) pipes_append(inPipes);
         pipes_append(outPipes);
         String cmd = command_get_command(cur);
-        if(has_paralel(cmd))
-            execCommandParalel(cmd, i, inPipes, outPipes);
+        if(has_parallel(cmd))
+            execCommandParallel(cmd, i, inPipes, outPipes);
         else if(has_pipes(cmd))
             execCommandPipes(cmd, i, inPipes, outPipes);
         else
@@ -123,10 +123,11 @@ int execBatch(Command c, int* pipfd){
         // Read cmd output
         while((n = read(pipes_index(outPipes, i)[0], buf, 1024)) > 0){
             // Write to parent pipe for storage
-            write(pipfd[1], buf, (size_t) n);
+            n = write(pipfd[1], buf, (size_t) n);
             if(i < (cmdCount - 1)){
                 writeToPipes(cur, inPipes, buf, (size_t) n, i);
             }
+            if(n == -1) _exit(-1);
         }
         int status;
         wait(&status);
@@ -136,7 +137,7 @@ int execBatch(Command c, int* pipfd){
             LOG_FATAL("\n");
             _exit(1);
         }
-        write(pipfd[1], "\0", 1); // Write the separated '\0'
+        if(write(pipfd[1], "\0", 1) == -1) _exit(-1); // Write the separated '\0'
         if(i < (cmdCount - 1))
             closePipes(cur, inPipes, i); // Close input pipes
     }
@@ -151,7 +152,7 @@ int has_pipes(String s){
     return 0;
 }
 
-int has_paralel(String s){
+int has_parallel(String s){
     for(size_t i = 0; i < s.length; i++)
         if(s.s[i] == '&' && s.length > i + 1 && s.s[i+1] != '>') return 1;
     return 0;
@@ -265,7 +266,7 @@ void execCommand(String cmd, size_t i, Pipes inPipes, Pipes outPipes){
     _exit(1);
 }
 
-void execCommandParalel(String cmd, size_t i, Pipes inPipes, Pipes outPipes){
+void execCommandParallel(String cmd, size_t i, Pipes inPipes, Pipes outPipes){
     // Close what I don't need
     if(fork()) return;
     if(i > 0){
@@ -281,27 +282,27 @@ void execCommandParalel(String cmd, size_t i, Pipes inPipes, Pipes outPipes){
     char* line = malloc(sizeof(char) * (cmd.length + 1));
     strncpy(line, cmd.s, cmd.length); line[cmd.length] = '\0';
     // Execute every token
-    PtrList cmdsArray = ptr_list_create(4);
+    PtrList cmdArray = ptr_list_create(4);
     char* cur = line;
     char* c = strstr(line, "& ");
     while(c != NULL){
         *c = '\0';
-        ptr_list_append(cmdsArray, cur);
+        ptr_list_append(cmdArray, cur);
         cur = c + 2;
         c = strstr(cur, "& ");
     };
-    ptr_list_append(cmdsArray, cur);
-    ptr_list_append(cmdsArray, NULL);
-    for(size_t j = 1; ptr_list_index(cmdsArray, j - 1) != NULL; j++){
+    ptr_list_append(cmdArray, cur);
+    ptr_list_append(cmdArray, NULL);
+    for(size_t j = 1; ptr_list_index(cmdArray, j - 1) != NULL; j++){
         pipes_append(innerInPipes);
         pipes_append(innerOutPipes);
-        String c;
-        char* cmd = ptr_list_index(cmdsArray, j - 1);
-        string_init(&c, cmd, strlen(cmd));
-        if(has_pipes(c))
-            execCommandPipes(c, j, innerInPipes, innerOutPipes);
+        String s;
+        c = ptr_list_index(cmdArray, j - 1);
+        string_init(&s, c, strlen(c));
+        if(has_pipes(s))
+            execCommandPipes(s, j, innerInPipes, innerOutPipes);
         else
-            execCommand(c, j, innerInPipes, innerOutPipes);
+            execCommand(s, j, innerInPipes, innerOutPipes);
         close(pipes_index(innerInPipes, j - 1)[0]);
         close(pipes_index(innerOutPipes, j)[1]);
     }
@@ -312,7 +313,8 @@ void execCommandParalel(String cmd, size_t i, Pipes inPipes, Pipes outPipes){
         close(pipes_index(inPipes, i - 1)[0]);
         while((n = read(0, buf, 1024)) > 0){
             for(size_t k = 0; k < pipes_len(innerInPipes); k++){
-                write(pipes_index(innerInPipes, k)[1], buf, n);
+                if(write(pipes_index(innerInPipes, k)[1], buf, (size_t) n) < 0)
+                    _exit(-1);
             }
         }
         for(size_t k = 0; k < pipes_len(innerInPipes); k++)
@@ -322,13 +324,13 @@ void execCommandParalel(String cmd, size_t i, Pipes inPipes, Pipes outPipes){
     close(pipes_index(outPipes, i)[1]);
     for(size_t k = 1; k < pipes_len(innerOutPipes); k++){
         while((n = read(pipes_index(innerOutPipes, k)[0], buf, 1024)) > 0){
-            write(1, buf, n);
+            if(write(1, buf, (size_t) n) == -1) _exit(-1);
         }
         int status;
         wait(&status);
         if(!WIFEXITED(status)){
-            LOG_FATAL("Paralel Command failed: ");
-            LOG_FATAL(ptr_list_index(cmdsArray, k - 1));
+            LOG_FATAL("Parallel Command failed: ");
+            LOG_FATAL(ptr_list_index(cmdArray, k - 1));
             LOG_FATAL("\n");
             _exit(1);
         }
@@ -354,7 +356,11 @@ void execCommandPipes(String cmd, size_t i, Pipes inPipes, Pipes outPipes){
         ptr_list_append(cmdsArray, c);
     }
     for(size_t j = 0; j < ptr_list_len(cmdsArray); j++){
-        pipe(posPipe);
+        if(pipe(posPipe) == -1){
+            LOG_FATAL("Pipe failed: ");
+            LOG_FATAL(ptr_list_index(cmdsArray, j));
+            _exit(-2);
+        }
         if(!fork()){
             char* c = ptr_list_index(cmdsArray, j);
             char** command = words(c, strlen(c));
@@ -388,7 +394,8 @@ void writeToPipes(Command c, Pipes inPipes, char* buf, size_t n, size_t i){
         }else{
             size_t offset = i + ((size_t) idx) - 1;
             // Write to dep cmd in chain
-            write(pipes_index(inPipes, offset)[1], buf, n);
+            if(write(pipes_index(inPipes, offset)[1], buf, n) == -1)
+                _exit(-1);
         }
     }
 }

@@ -1,4 +1,4 @@
-Este notebook so tem commentarios
+Este notebook so tem comentarios
 É suposto o output ser o mesmo que o input
 1
 22

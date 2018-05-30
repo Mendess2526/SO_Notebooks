@@ -13,7 +13,7 @@
 
 void nuke(int i){
     (void) i;
-    //kill(0, SIGKILL);
+    kill(0, SIGKILL);
 }
 
 static int handleFlags(int argc, char** argv);
@@ -30,11 +30,11 @@ short I_STDIN;
 short SEQUENTIAL;
 
 int main(int argc, char** argv){
-//    signal(SIGINT, nuke);
+    signal(SIGINT, nuke);
     if(argc < 2){
         char message[] = "Usage: ./program [OPTIONS] notebook.nb\n\n"
                          "use ./program -h for help\n";
-        write(1, message, strlen(message));
+        if(write(1, message, strlen(message)) == 0) return -1;
         return 1;
     }
     int mode = handleFlags(argc, argv);
@@ -63,9 +63,9 @@ int main(int argc, char** argv){
 void printHelp(char* arg){
     if(arg){
         char message[] = "Invalid argument: ";
-        write(2, message, strlen(message));
-        write(2, arg, strlen(arg));
-        write(2, "\n", 1);
+        if(write(2, message, strlen(message)) == -1
+            || write(2, arg, strlen(arg)) == -1
+            || write(2, "\n", 1) == -1) _exit(-1);
     }else{
         char message[] = "./program [OPTIONS] file\n\n"
                          "If file is '-' will read from "UNDERLINE"stdin"RESET
@@ -73,9 +73,9 @@ void printHelp(char* arg){
                          BOLD "OPTIONS:\n" RESET
                          "\t-o\tOutput to "UNDERLINE"stdout"RESET
                                 " instead of "UNDERLINE"file"RESET"\n"
-                         "\t-s\tExecute batches sequentialy\n"
+                         "\t-s\tExecute batches sequentially\n"
                          "\t-h\tDisplay this message\n";
-        write(1, message, strlen(message));
+        if(write(1, message, strlen(message)) == -1) _exit(-1);
     }
 }
 
@@ -168,14 +168,6 @@ void read_from_pipes_write_batch(Command cmd, int* pp){
     free(buf);
 }
 
-void pick_and_write_color(char* line){
-    switch(line[0]){
-        case '$': write(1, YELLOW, strlen(YELLOW)); break;
-        case '>':
-        case '<': write(1, RED, strlen(RED)); break;
-    }
-}
-
 void tree_to_file(ParseTree pt, char* filename){
     int fd;
     if(O_STDOUT)
@@ -185,8 +177,8 @@ void tree_to_file(ParseTree pt, char* filename){
     char** dump = parse_tree_dump(pt);
     int i = 0;
     while(dump[i]){
-        write(fd, dump[i], strlen(dump[i]));
-        write(fd, "\n", 1);
+        if(write(fd, dump[i], strlen(dump[i])) == -1) _exit(-1);
+        if(write(fd, "\n", 1) == -1) _exit(-1);
         free(dump[i++]);
     }
     free(dump);

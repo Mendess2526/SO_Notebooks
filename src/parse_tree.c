@@ -156,15 +156,14 @@ static void parse_tree_add_command(ParseTree pt, Command command){
 }
 
 static Node get_dependency_node(ParseTree pt, size_t dependency){
-    size_t idx = idx_list_index(pt->commands,
+    ssize_t idx = idx_list_index(pt->commands,
                                 idx_list_len(pt->commands) - dependency);
-    return ptr_list_index(pt->nodes, idx);
+    return ptr_list_index(pt->nodes, (size_t) idx);
 }
 
 static void parse_tree_chain_command(ParseTree pt, Command command){
     Node n = get_dependency_node(pt, command->dependency);
     Command cur = NULL;
-    char* error;
     if(n == NULL){
         LOG_PARSE_ERROR(CURRENT_LINE,
                 LINE_NUMBER,
@@ -175,7 +174,7 @@ static void parse_tree_chain_command(ParseTree pt, Command command){
         LOG_WARNING("Chaining to comment node\n");
     }else if(NULL == (cur = n->c.command)){
         LOG_WARNING("Chaining to null command\n");
-    }else if((error = strnstr(cur->command.s, ">", cur->command.length)) != NULL
+    }else if(strnstr(cur->command.s, ">", cur->command.length) != NULL
             && strnstr(cur->command.s, "2>", cur->command.length) == NULL){
         LOG_PARSE_ERROR(CURRENT_LINE, LINE_NUMBER,
                 "Can't write to pipe and file at the same time", 1);
@@ -202,7 +201,7 @@ static ssize_t parse_tree_parse_command(ParseTree pt,
         size_t dep = (size_t) strtol(line, &tail, 10);
         if(*tail != '|'){
             LOG_PARSE_ERROR(CURRENT_LINE, LINE_NUMBER, "Missing pipe",
-                            (tail + 1) - line);
+                            (int) ((tail + 1) - line));
             _exit(1);
         }
         c = command_create(tail + 1, length - ((tail + 1) - line), dep);
@@ -226,7 +225,7 @@ static Command command_create(char* line, size_t length, size_t dependency){
     if(dependency != 0 && (error = strnstr(line, "<", length)) != NULL){
         LOG_PARSE_ERROR(CURRENT_LINE, LINE_NUMBER,
                         "Can't read from pipe and file at the same time",
-                        error - line);
+                        (int) (error - line));
         _exit(1);
     }
     c->dependency = dependency;
@@ -422,8 +421,6 @@ void printComment(Comment c){
     printf(GREEN "\t%s" RESET "\n", c->comment.s);
     c->comment.length = length;
 }
-
-#define APPENDS(boolean) ((boolean) ? ">>" : ">")
 
 void printCommand(Command c){
     static int notFirst;

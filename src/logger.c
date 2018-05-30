@@ -19,19 +19,19 @@ static inline char* paintMessage(char* color, char* message, size_t len){
 
 void LOG_FATAL(char* message){
     char* paintedMsg = paintMessage(RED, message, strlen(message));
-    write(2, paintedMsg, strlen(paintedMsg));
+    if(write(2, paintedMsg, strlen(paintedMsg)) == -1) _exit(-1);
     free(paintedMsg);
 }
 
 void LOG_FATAL_STRING(String message){
     char* paintedMsg = paintMessage(RED, message.s, message.length);
-    write(2, paintedMsg, strlen(paintedMsg));
+    if(write(2, paintedMsg, strlen(paintedMsg)) == -1) _exit(-1);
     free(paintedMsg);
 }
 
 void _log_CRITICAL(char* message){
     char* paintedMsg = paintMessage(YELLOW, message, strlen(message));
-    write(2, paintedMsg, strlen(paintedMsg));
+    if(write(2, paintedMsg, strlen(paintedMsg)) == -1) _exit(-1);
     free(paintedMsg);
 }
 
@@ -57,18 +57,18 @@ void LOG_PARSE_ERROR(String line, int lineNumber, char* message, int errOffset){
         strcat(output, " ");
     strcat(output, GREEN "^" RESET "\n");
 
-    write(2, output, totalLen);
+    if(write(2, output, totalLen) == -1) _exit(-1);
     free(output);
 }
 
 void LOG_WARNING_STRING(String message){
     char* paintedMsg = paintMessage(PURPLE, message.s, message.length);
-    write(2, paintedMsg, strlen(paintedMsg));
+    if(write(2, paintedMsg, strlen(paintedMsg)) == -1) _exit(-1);
     free(paintedMsg);
 }
 
 void LOG_WARNING(char* message){
     char* paintedMsg = paintMessage(PURPLE, message, strlen(message));
-    write(2, paintedMsg, strlen(paintedMsg));
+    if(write(2, paintedMsg, strlen(paintedMsg)) == -1) _exit(-1);
     free(paintedMsg);
 }

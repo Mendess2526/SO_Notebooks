@@ -22,13 +22,13 @@ Pipes pipes_create(size_t size){
     return p;
 }
 
-void pipes_append(Pipes p){
+int pipes_append(Pipes p){
     if(p->load >= p->size){
         p->size *= 2;
         p->pipes = realloc(p->pipes, sizeof(int*) * p->size);
     }
     p->pipes[p->load] = (int*) malloc(sizeof(int) * 2);
-    pipe(p->pipes[p->load++]);
+    return pipe(p->pipes[p->load++]);
 }
 
 int* pipes_index(Pipes p, size_t idx){

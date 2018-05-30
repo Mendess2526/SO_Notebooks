@@ -80,10 +80,10 @@ char* str_dup(const char* str){
 
 char* strnstr(const char* haystack, const char* needle, size_t n){
     for(size_t i = 0; i < n; i++){
-        int succeded = 1;
-        for(size_t j = i, k = 0; succeded && j < n && needle[k]; j++, k++)
-            if(haystack[j] != needle[k]) succeded = 0;
-        if(succeded) return (char*) &haystack[i];
+        int succeeded = 1;
+        for(size_t j = i, k = 0; succeeded && j < n && needle[k]; j++, k++)
+            if(haystack[j] != needle[k]) succeeded = 0;
+        if(succeeded) return (char*) &haystack[i];
     }
     return NULL;
 }
