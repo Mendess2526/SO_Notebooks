@@ -1,0 +1,4 @@
+Batch que demore imenso tempo
+$ sleep 10
+Comando que falha
+$ whoam

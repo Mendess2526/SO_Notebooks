@@ -1,0 +1,3 @@
+Invalid double output:
+$ ls > filename
+$| wc
