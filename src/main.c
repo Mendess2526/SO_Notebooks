@@ -101,6 +101,7 @@ void waitForBatch(ParseTree pt, Pipes pipes, IdxList pids){
     int status;
     while((pid = wait(&status)) > 0){
         if(!WIFEXITED(status) || WEXITSTATUS(status) != 0){
+            kill(0, SIGKILL);
             LOG_FATAL("Batch failed\n");
             _exit(1);
         }
