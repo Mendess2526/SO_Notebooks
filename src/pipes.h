@@ -16,14 +16,14 @@ typedef struct _pipes* Pipes;
 Pipes pipes_create(size_t size);
 
 /**
- * Appends element to the list
+ * Appends the element to the list
  *
  * \param p List
  */
 int pipes_append(Pipes p);
 
 /**
- * Get element from the list at the given index
+ * Get the element from the list at the given index
  *
  * \param p List
  * \param idx Index to search
@@ -31,14 +31,14 @@ int pipes_append(Pipes p);
 int* pipes_index(Pipes p, size_t idx);
 
 /**
- * Get size of the list 
+ * Get the size of the list 
  *
  * \param p List
  */
 size_t pipes_len(Pipes p);
 
 /**
- * Get last element from the list 
+ * Get the last element from the list 
  *
  * \param p List
  */

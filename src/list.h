@@ -17,7 +17,7 @@ typedef struct _list* IdxList;
 IdxList idx_list_create(size_t size);
 
 /**
- * Appends element to the list
+ * Appends the element to the list
  *
  * \param l List
  * \param val Value to insert
@@ -25,7 +25,7 @@ IdxList idx_list_create(size_t size);
 void idx_list_append(IdxList l, size_t val);
 
 /**
- * Get element from the list at the given index
+ * Get the element from the list at the given index
  *
  * \param l List
  * \param idx Index to search
@@ -33,14 +33,14 @@ void idx_list_append(IdxList l, size_t val);
 ssize_t idx_list_index(IdxList l, size_t idx);
 
 /**
- * Get last element from the list 
+ * Get the last element from the list 
  *
  * \param l List
  */
 ssize_t idx_list_last(IdxList l);
 
 /**
- * Get size of the list 
+ * Get the size of the list 
  *
  * \param l List
  */
@@ -74,7 +74,7 @@ typedef struct _ptr_list* PtrList;
 PtrList ptr_list_create(size_t size);
 
 /**
- * Appends element to the list
+ * Appends the element to the list
  *
  * \param l List
  * \param val Value to insert
@@ -82,7 +82,7 @@ PtrList ptr_list_create(size_t size);
 void ptr_list_append(PtrList l, void* val);
 
 /**
- * Get element from the list at the given index
+ * Get the element from the list at the given index
  *
  * \param l List
  * \param idx Index to search
@@ -90,7 +90,7 @@ void ptr_list_append(PtrList l, void* val);
 void* ptr_list_index(PtrList l, size_t idx);
 
 /**
- * Get size of the list 
+ * Get the size of the list 
  *
  * \param l List
  */
