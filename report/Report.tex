@@ -169,7 +169,7 @@
             comandos que dependem do output deste.
 
         \item \mintinline{C}{pipe}: O apontador para o proximo comando na
-            \textbf{Batch}. %TODO
+            \textbf{Batch}.
     \end{itemize}
 
     \section{Batches}
@@ -257,6 +257,31 @@
         Se o nome do ficheiro for \mintinline{text}{-} o input do programa será
         obtido do \textit{standard input} invez de obtido de um ficheiro. Esta
         opção automaticamente ativa a opção de escrever para o \textit{stdout}.
+
+\chapter{Controlo de erros}
+    Durante a fase de \textit{parsing} são detetados erros de sintaxe que possam
+    existir, caso algum seja detetado o processamente é abortado e uma mensagem
+    a indicar o erro que ocurreu é impressa para o \textit{stderr}.
+
+    \begin{figure}[h]
+        \centering
+        %\captionsetup{width=0.5\textwidth}
+        \includegraphics[width=0.5\textwidth]{./images/parseError.png}
+        \caption{Messagem de erro enviada caso seja pedida uma dependencia
+                    impossivel}
+        \label{fig:parseError}
+    \end{figure}
+
+    Durante a execução dos commandos se algum destes fizer o
+    \mintinline{C}{execvp()} falhar a execução de todos os outros é interrompida
+    e o ficheiro fonte permanece inalterado.
+
+    \begin{figure}[h]
+        \centering
+        \includegraphics[width=0.5\textwidth]{./images/execError.png}
+        \caption{Erro apresentado no ecra caso o commando não exita. Neste caso
+                    para o comando \mintinline{text}{whoam}}
+    \end{figure}
 
 \chapter{Conclusões e Trabalho Futuro}
     Em suma, o grupo considera que o trabalho foi realizado na sua
