@@ -45,7 +45,7 @@ size_t pipes_len(Pipes p);
 int* pipes_last(Pipes p);
 
 /**
- * Close pipe at the given index 
+ * Close file descriptors from pipe at the given index 
  *
  * \param p List
  * \param i index 
