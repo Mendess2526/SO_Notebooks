@@ -67,7 +67,7 @@ void idx_list_free(IdxList l);
 typedef struct _ptr_list* PtrList;
 
 /**
- * Creates an index list.
+ * Creates a list'of pointers.
  *
  * \param size Length of list
  */
