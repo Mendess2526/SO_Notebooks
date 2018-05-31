@@ -13,7 +13,7 @@
 
 void nuke(int i){
     (void) i;
-    kill(0, SIGKILL);
+    kill(0, SIGINT);
 }
 
 static int handleFlags(int argc, char** argv);
@@ -101,7 +101,7 @@ void waitForBatch(ParseTree pt, Pipes pipes, IdxList pids){
     int status;
     while((pid = wait(&status)) > 0){
         if(!WIFEXITED(status) || WEXITSTATUS(status) != 0){
-            kill(0, SIGKILL);
+            kill(0, SIGINT);
             LOG_FATAL("Batch failed\n");
             _exit(1);
         }
