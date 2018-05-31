@@ -82,13 +82,14 @@ static void parse_tree_add_command(ParseTree pt, Command command);
 
 static void parse_tree_add_comment(ParseTree pt, Comment comment);
 
-static void parse_tree_chain_command(ParseTree pt, Command command);
+static int parse_tree_chain_command(ParseTree pt, Command command);
 
 static ssize_t parse_tree_parse_command(ParseTree pt,
                                         char* line,
                                         size_t length);
 
 ParseTree parse_tree_create(size_t size){
+    LINE_NUMBER = 0;
     ParseTree pt = (ParseTree) malloc(sizeof(struct _parse_tree));
     pt->state = TEXT_MODE;
     pt->nodes = ptr_list_create(size);
@@ -161,7 +162,8 @@ static Node get_dependency_node(ParseTree pt, size_t dependency){
     return ptr_list_index(pt->nodes, (size_t) idx);
 }
 
-static void parse_tree_chain_command(ParseTree pt, Command command){
+static int parse_tree_chain_command(ParseTree pt, Command command){
+    if(!command) return -2;
     Node n = get_dependency_node(pt, command->dependency);
     Command cur = NULL;
     if(n == NULL){
@@ -169,7 +171,7 @@ static void parse_tree_chain_command(ParseTree pt, Command command){
                 LINE_NUMBER,
                 "Impossible dependency",
                 CURRENT_LINE.s[1] == '|' ? 1 : 2);
-        _exit(1);
+        return 1;
     }else if(n->type == N_COMMENT){
         LOG_WARNING("Chaining to comment node\n");
     }else if(NULL == (cur = n->c.command)){
@@ -178,7 +180,7 @@ static void parse_tree_chain_command(ParseTree pt, Command command){
             && strnstr(cur->command.s, "2>", cur->command.length) == NULL){
         LOG_PARSE_ERROR(CURRENT_LINE, LINE_NUMBER,
                 "Can't write to pipe and file at the same time", 1);
-        _exit(1);
+        return 1;
     }else{
         Command dep = cur;
         size_t offset = 1;
@@ -186,6 +188,7 @@ static void parse_tree_chain_command(ParseTree pt, Command command){
         cur->pipe = command;
         idx_list_append(dep->dependants, offset);
     }
+    return 0;
 }
 
 static ssize_t parse_tree_parse_command(ParseTree pt,
@@ -195,17 +198,17 @@ static ssize_t parse_tree_parse_command(ParseTree pt,
     Command c;
     if(line[0] == '|'){
         c = command_create(line + 1, length - 1, 1);
-        parse_tree_chain_command(pt, c);
+        if(parse_tree_chain_command(pt, c)) return -2;
     }else if(isdigit(line[0])){
         char* tail;
         size_t dep = (size_t) strtol(line, &tail, 10);
         if(*tail != '|'){
             LOG_PARSE_ERROR(CURRENT_LINE, LINE_NUMBER, "Missing pipe",
                             (int) ((tail + 1) - line));
-            _exit(1);
+            return -2;
         }
         c = command_create(tail + 1, length - ((tail + 1) - line), dep);
-        parse_tree_chain_command(pt, c);
+        if(parse_tree_chain_command(pt, c)) return -2;
     }else{
         c = command_create(line, length, 0);
         finishBatch = idx_list_len(pt->batches) - 1;
@@ -225,8 +228,8 @@ static Command command_create(char* line, size_t length, size_t dependency){
     if(dependency != 0 && (error = strnstr(line, "<", length)) != NULL){
         LOG_PARSE_ERROR(CURRENT_LINE, LINE_NUMBER,
                         "Can't read from pipe and file at the same time",
-                        (int) (error - line));
-        _exit(1);
+                        (int) (error - line + 2));
+        return NULL;
     }
     c->dependency = dependency;
     string_init(&c->command, line, length);

@@ -95,6 +95,7 @@ static void closePipes(Command c, Pipes inPipes, size_t i);
 int execBatch(Command c, int* pipfd){
     int pid = fork();
     if(pid) return pid;
+    signal(SIGINT, SIG_DFL);
     close(pipfd[0]);
 
     Pipes inPipes = pipes_create(3);

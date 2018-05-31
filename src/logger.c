@@ -46,6 +46,7 @@ void LOG_PARSE_ERROR(String line, int lineNumber, char* message, int errOffset){
             + strlen("\t") + strlen(" ") * errOffset +
             strlen(GREEN "^" RESET "\n") + strlen("\0");
     char* output = malloc(sizeof(char) * totalLen);
+    output[0] = '\0';
     strcat(output, BOLD "line ");
     strncat(output, lineN, lineNlen);
     strcat(output, ": " RED "error: " RESET);

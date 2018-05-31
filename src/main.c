@@ -14,6 +14,7 @@
 void nuke(int i){
     (void) i;
     kill(0, SIGINT);
+    signal(SIGINT, nuke);
 }
 
 static int handleFlags(int argc, char** argv);
@@ -24,7 +25,7 @@ static void read_from_pipes_write_batch(Command cmd, int* pp);
 
 void tree_to_file(ParseTree pt, char* filename);
 
-char* FILE_NAME;
+PtrList FILE_NAMES;
 short O_STDOUT;
 short I_STDIN;
 short SEQUENTIAL;
@@ -37,26 +38,41 @@ int main(int argc, char** argv){
         if(write(1, message, strlen(message)) == 0) return -1;
         return 1;
     }
+    FILE_NAMES = ptr_list_create(argc);
     int mode = handleFlags(argc, argv);
     if(mode) return mode;
     // Open file to read from
     int fd;
-    if(I_STDIN)
-       fd = 0;
-    else
-       fd = open(FILE_NAME, O_RDONLY, 0644);
+    size_t numFiles = ptr_list_len(FILE_NAMES);
+    size_t i = 0;
+    while(i < numFiles){
+        char* filename;
+        if(I_STDIN){
+            fd = 0;
+            filename = NULL;
+        }else{
+            filename = ptr_list_index(FILE_NAMES, i);
+            if(write(1, BLUE, strlen(BLUE)) == -1) _exit(-1);
+            if(write(1, filename, strlen(filename)) == -1) _exit(-1);
+            if(write(1, RESET "\n", strlen(RESET) + 1) == -1) _exit(-1);
+            fd = open(filename, O_RDONLY, 0644);
+        }
 
-    // Parse file and execute batches
-    Pipes pipes = pipes_create(20);
-    IdxList pids = idx_list_create(20);
-    ParseTree pt = parse_and_exec(fd, pipes, pids);
-
-    // Read outputs and write store them in the batches
-    pipes_free(pipes);
-    idx_list_free(pids);
-    // Write the tree to a file
-    tree_to_file(pt, FILE_NAME);
-    parse_tree_destroy(pt);
+        // Parse file and execute batches
+        Pipes pipes = pipes_create(20);
+        IdxList pids = idx_list_create(20);
+        ParseTree pt = parse_and_exec(fd, pipes, pids);
+        if(pt){
+            // Read outputs and write store them in the batches
+            pipes_free(pipes);
+            idx_list_free(pids);
+            // Write the tree to a file
+            tree_to_file(pt, filename);
+            parse_tree_destroy(pt);
+        }
+        if(I_STDIN) I_STDIN = 0;
+        else i++;
+    }
     return 0;
 }
 
@@ -83,27 +99,29 @@ int handleFlags(int argc, char** argv){
     for(int i = 1; i < argc; i++){
         if(argv[i][0] == '-'){
             switch(argv[i][1]){
-                case '\0': I_STDIN = 1; O_STDOUT = 1; break;
+                case '\0': I_STDIN = 1; break;
                 case 'o': O_STDOUT = 1; break;
                 case 'h': printHelp(NULL); return 1;
                 case 's': SEQUENTIAL = 1; break;
                 default: printHelp(argv[i]); return 2;
             }
         }else{
-            FILE_NAME = argv[i];
+            ptr_list_append(FILE_NAMES, argv[i]);
         }
     }
     return 0;
 }
 
-void waitForBatch(ParseTree pt, Pipes pipes, IdxList pids){
+int waitForBatch(ParseTree pt, Pipes pipes, IdxList pids){
     pid_t pid;
     int status;
     while((pid = wait(&status)) > 0){
         if(!WIFEXITED(status) || WEXITSTATUS(status) != 0){
-            kill(0, SIGINT);
+            for(size_t i = 0; i < idx_list_len(pids); i++){
+                kill(idx_list_index(pids, i), SIGINT);
+            }
             LOG_FATAL("Batch failed\n");
-            _exit(1);
+            return 1;
         }
         ssize_t i = idx_list_find(pids, (size_t) pid);
         if(i < 0) LOG_WARNING("Missing pid\n");
@@ -111,6 +129,7 @@ void waitForBatch(ParseTree pt, Pipes pipes, IdxList pids){
             read_from_pipes_write_batch(parse_tree_get_batch(pt, (size_t) i),
                                         pipes_index(pipes, (size_t) i));
     }
+    return 0;
 }
 
 ParseTree parse_and_exec(int fd, Pipes pipes, IdxList pids){
@@ -121,7 +140,10 @@ ParseTree parse_and_exec(int fd, Pipes pipes, IdxList pids){
     do{
         buff = readLn(fd, &len);
         ssize_t batch = parse_tree_add_line(pt, buff, len);
-        if(batch != -1){
+        if(batch == -2){
+            parse_tree_destroy(pt);
+            return NULL;
+        }else if(batch != -1){
             batchCount++;
         }
         free(buff);
@@ -136,9 +158,15 @@ ParseTree parse_and_exec(int fd, Pipes pipes, IdxList pids){
             idx_list_append(pids, (size_t) pid);
         else
             LOG_WARNING("Couldn't fork\n");
-        if(SEQUENTIAL) waitForBatch(pt, pipes, pids);
+        if(SEQUENTIAL && waitForBatch(pt, pipes, pids)){
+            parse_tree_destroy(pt);
+            return NULL;
+        }
     }
-    if(!SEQUENTIAL) waitForBatch(pt, pipes, pids);
+    if(!SEQUENTIAL && waitForBatch(pt, pipes, pids)){
+        parse_tree_destroy(pt);
+        return NULL;
+    }
     return pt;
 }
 
@@ -170,7 +198,7 @@ void read_from_pipes_write_batch(Command cmd, int* pp){
 
 void tree_to_file(ParseTree pt, char* filename){
     int fd;
-    if(O_STDOUT)
+    if(O_STDOUT || filename == NULL)
         fd = 1;
     else
         fd = creat(filename, 0644);
