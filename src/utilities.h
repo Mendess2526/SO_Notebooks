@@ -1,54 +1,65 @@
 #ifndef UTILITIES_H
 #define UTILITIES_H
-
+/**
+ * \file
+ * TODO
+ */
 #include <unistd.h>
 
 /**
- * Reads a line from the given file descriptor
+ * \brief Reads a line from the given file descriptor
  *
  * \param fd File descriptor
  * \param nBytes number of bytes to read
+ * \returns The line read or NULL if nothing could be read
  */
 char* readLn(int fd, size_t* nBytes);
 
 /**
- * Separates a string to an array of strings
+ * \brief Creates an array of words from the given string
  *
- * \param string String to separate
- * \param len Length of string
+ * \param string The string to separate
+ * \param len The length of string
+ * \returns The array of strings
  */
 char** words(const char* string, size_t len);
 
 /**
- * Convert an int to string
- * 
- * \param num Number to convert
- * \param string String to update
- * \param len Length of string
+ * \brief Convert an int to a string
+ *
+ * \param num The number
+ * \param string The buffer to store the converted number
+ * \param len The size of the buffer
+ * \returns The amount of char's ocupied by the string
  */
 size_t int2string(int num, char* string, size_t len);
 
 /**
- * Copy to a new string n elements of the old string 
+ * \brief Copy to a new string n elements of the given
  *
- * \param str String to copy from
- * \param len Number of elements of the old string to copy
+ * \param str The string to copy from
+ * \param len The number of elements to copy
+ * \returns The copy
  */
 char* str_n_dup(const char* str, size_t len);
 
 /**
- * Copies a string 
+ * \brief Creates a copy of a string
  *
- * \param str String to copy from
+ * \param str The string to copy
+ * \returns The copy
  */
 char* str_dup(const char* str);
 
 /**
- * Verifies if n first elements of a string are into another one
+ * \brief Returns a pointer to the first ocurrence of the needle in the
+ * haystack or NULL if needle doesn't ocurr in the first n char's
  *
- * \param haystack The string to verify
- * \param needle The string where to verify
- * \param n Number of elements of the string haystack
+ * \param haystack The string to search
+ * \param needle The string to find
+ * \param n The length of haystack to check
+ * \returns A pointer to the first ocurrence or NULL if not found
  */
 char* strnstr(const char* haystack, const char* needle, size_t n);
+
 #endif /* UTILITIES_H */
