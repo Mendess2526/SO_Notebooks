@@ -2,7 +2,7 @@
 #define LOGGER_H
 /**
  * \file
- * Hellper functions to log errors to the screen.
+ * \brief Hellper functions to log errors to the screen.
  */
 #include "strings.h"
 

@@ -1,6 +1,9 @@
 #ifndef COLORS_H
 #define COLORS_H
-
+/**
+ * \file
+ * Defines bash recognized color escape sequences.
+ */
 #define RED "\033[31m"
 #define GREEN "\033[32m"
 #define BLUE "\033[34m"
