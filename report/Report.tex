@@ -8,6 +8,7 @@
 \usepackage{float}
 \usepackage{array}
 \usepackage{tikz}
+\usetikzlibrary{matrix,backgrounds,positioning,calc,fit}
 \usepackage{multirow}
 \usepackage{multicol}
 \usepackage{geometry}
@@ -89,23 +90,23 @@
         Linha começada por \$ que contem o comando que vai ser executado.
         Este tipo de linha suporta multiplas opções adicionais.
         \subsection{Pipe para um comando anterior}
-            Se, seguido do \$, estiver um número N e um $|$ o input do commando
-            será obtido do commando que estiver N posições acima no ficheiro.
+            Se, seguido do \$, estiver um número N e um $|$ o input do comando
+            será obtido do comando que estiver N posições acima no ficheiro.
             Caso este número seja 1 este pode ser omitido.
         \subsection{Pipelining numa so linha}
-            Um commando pode ser na verdade um encadeamento de varios comandos
+            Um comando pode ser na verdade um encadeamento de varios comandos
             unidos por pipes, por exemplo
             \mintinline{bash}{grep -v ˆ# /etc/passwd | cut -f7 -d: | uniq},
             neste caso o comportamento é o esperado: O input desta sequência
-            poderá ser obtido de um commando anterior e o seu output
-            redirecionado para um proximo commando no ficheiro.
+            poderá ser obtido de um comando anterior e o seu output
+            redirecionado para um proximo comando no ficheiro.
         \subsection{Execução em paralelo}
-            Num so linha começada por \$ varios commandos podem ser executados
+            Num so linha começada por \$ varios comandos podem ser executados
             separados por \&. Neste caso os seu output é misturado,
             indiscrimidamente na sua secção de output. Caso esta linha esteja
             a receber input de uma anterior, este input é distribuido para
-            todos os commandos separados por \&. Inversamente, caso algum
-            commando esteja a receber o seu input desta linha, este receberá
+            todos os comandos separados por \&. Inversamente, caso algum
+            comando esteja a receber o seu input desta linha, este receberá
             o output de todos os comandos presentes nesta linha também por
             ordem "aleatoria".
         \subsection{Redirecionamento para ficheiros}
@@ -114,7 +115,7 @@
             \mintinline{bash}{<, >, >>, 2>, &>}.
             Quando este tipo de redirecionado é utilizado, no entanto,
             impossibilita algumas das opções anteriores, por exemplo,
-            se o output for redirecionado para um ficheiro, nenhum dos commandos
+            se o output for redirecionado para um ficheiro, nenhum dos comandos
             seguintes pode depender deste output.
 
 \chapter{Parsing}
@@ -154,15 +155,15 @@
 
     A função de cada um dos campos é, respetivamente:
     \begin{itemize}
-        \item \mintinline{C}{dependency}: Quantas posições atráz está o commando
-            de, cujo output, este depende. Se este número for 0 o commando não
+        \item \mintinline{C}{dependency}: Quantas posições atráz está o comando
+            de, cujo output, este depende. Se este número for 0 o comando não
             depende.
 
-        \item \mintinline{C}{command}: O commando em sí. Neste ponto não são
+        \item \mintinline{C}{command}: O comando em sí. Neste ponto não são
             incluidos o \$ nem o $|$ e/ou números presentes no inicio da linha
             do notebook.
 
-        \item \mintinline{C}{output}: O output deste commando. Inicialmente
+        \item \mintinline{C}{output}: O output deste comando. Inicialmente
             começa vazio e tem de ser mais tarde preenchido.
 
         \item \mintinline{C}{dependants}: O array das posições onde estão os
@@ -207,18 +208,18 @@
         \mintinline{bash}{tail -2}. O Batch 1 é constituido pelo
         \mintinline{bash}{ps} e pelo \mintinline{bash}{head -2}.
 
-\chapter{Execução de commandos}
+\chapter{Execução de comandos}
 
     \section{Processo Pai}
-        Feito o parsing, da-se inicio à execução dos commandos. Primeiro o
+        Feito o parsing, da-se inicio à execução dos comandos. Primeiro o
         processo pai cria um filho para cada batch e, de seguida, espera que
-        estes morram para receber os resultado acumulado dos commandos
+        estes morram para receber os resultado acumulado dos comandos
         executados por cada um atravez de um pipe. A partir deste resultado
-        atualiza o output dos commandos e por fim converte a estrutura em
+        atualiza o output dos comandos e por fim converte a estrutura em
         texto que escreve no ficheiro.
 
     \section{Processo Batch}
-        Cada filho ira trabalhar sobre um, batch (lista ligada de commandos),
+        Cada filho ira trabalhar sobre um, batch (lista ligada de comandos),
         criando um filho para cada nó da lista. Aqui é também decidido o metodo
         de execução de cada nodo.
         \subsection{Commando simples}
@@ -227,17 +228,38 @@
             que pertence. Está aqui incluido também o redirecionamento para
             ficheiros, caso seja necessário.
         \subsection{Commando com pipelines}
-            Caso seja um commando com pipelines o input e output é redirecionado
+            Caso seja um comando com pipelines o input e output é redirecionado
             de forma analoga ao caso anterior e o encadeamento é feito
             corretamente.
-        \subsection{Dois ou mais commandos em paralelo}
-            Caso o nodo contenha um ou mais commandos separados por \& o
+        \subsection{Dois ou mais comandos em paralelo}
+            Caso o nodo contenha um ou mais comandos separados por \& o
             tratamento é mais complexo. Primeiro, este filho cria um outro
             filho para cada comando que o irá executar com \textit{stdin}
             e \textit{stdout} redirecionados para um pipe cada. Enquanto os
-            commandos executam o pai destes, filho do batch, escreve para todos
+            comandos executam o pai destes, filho do batch, escreve para todos
             o input que esta a receber do seu pai (batch) e agrega todo o
             output que lê dos seus filhos e envia-o, também, para o seu pai.
+\clearpage
+    \section{Ilustração dos processos}
+    Para ilustrar este procedimento, um exemplo de como um notebook que é
+    traduzido em processos e pipes, como descrito na secção anterior, pode
+    ser o seguinte:
+    \begin{figure}[h]
+        \begin{minted}{text}
+            Batch 0
+            $ ls
+            $| grep .c
+            Batch 1
+            $ ps
+            $| wc & head -1
+        \end{minted}
+        \caption{Notebook exemplo com um batch simples e um com comandos em
+                paralelo}
+    \end{figure}
+    \begin{figure}[h]
+        \input{./process_tree.tex}
+        \caption{Estrutura de processos e pipes criados}
+    \end{figure}
 
 \chapter{Opções de execução}
     O comportamento do programa pode ser alterado fazendo uso de \textit{flags}
@@ -265,21 +287,20 @@
 
     \begin{figure}[h]
         \centering
-        %\captionsetup{width=0.5\textwidth}
         \includegraphics[width=0.5\textwidth]{./images/parseError.png}
         \caption{Messagem de erro enviada caso seja pedida uma dependencia
                     impossivel}
         \label{fig:parseError}
     \end{figure}
 
-    Durante a execução dos commandos se algum destes fizer o
+    Durante a execução dos comandos se algum destes fizer o
     \mintinline{C}{execvp()} falhar a execução de todos os outros é interrompida
     e o ficheiro fonte permanece inalterado.
 
     \begin{figure}[h]
         \centering
         \includegraphics[width=0.5\textwidth]{./images/execError.png}
-        \caption{Erro apresentado no ecra caso o commando não exita. Neste caso
+        \caption{Erro apresentado no ecra caso o comando não exita. Neste caso
                     para o comando \mintinline{text}{whoam}}
     \end{figure}
 

@@ -1,0 +1,130 @@
+\definecolor{ballColor}{RGB}{59,61,196}
+\begin{tikzpicture}[
+outsideFlow/.style={
+    ->, ultra thick
+},
+insideFlowRead/.style={
+    ->, very thick, color=green
+},
+insideFlowWrite/.style={
+    ->, very thick, color=red
+},
+varray/.style={
+    matrix of nodes,
+    nodes={draw=none, minimum size=5mm, fill=white!30, anchor=west},
+    nodes in empty cells,
+}]
+    % Parent process
+    \node[draw, minimum height = 9cm, minimum width = 4cm] (pP) {};
+    \draw (pP.north) node [above] (pPlabel) {Processo principal};
+    % Batch 0
+    \node[draw, below right = 0pt and 30pt of pP.north east,
+                minimum height = 3cm, minimum width = 1.6cm] (batchZero) {};
+    \draw (batchZero.north) node [above] (bZlabel) {Batch 0};
+    % ls
+    \node[draw, below right = 0pt and 30pt of batchZero.north east,
+                minimum width = 1cm, minimum height = 1cm] (ls) {ls};
+    % grep
+    \node[draw, above right = 0pt and 30pt of batchZero.south east,
+                minimum width = 1cm, minimum height = 1cm] (grep) {grep .c};
+    % Batch 1
+    \node[draw, above right = 0pt and 30pt of pP.south east,
+                minimum height = 5cm, minimum width = 1.6cm] (batchOne) {};
+    \draw (batchOne.north) node [above] (bOlabel) {Batch 1};
+    % ps
+    \node[draw, below right = 0pt and 30pt of batchOne.north east,
+                minimum width = 1cm, minimum height = 1cm] (ps) {ps};
+    % wc & head
+    \node[draw, above right = 0pt and 30pt of batchOne.south east,
+                minimum height = 3cm, minimum width = 2.7cm] (wcAndHead) {};
+    \draw (wcAndHead.north) node [above] (wcAheadlabel) {wc \& head -1};
+    % wc
+    \node[draw, below right = 0pt and 30pt of wcAndHead.north east,
+                minimum width = 1cm, minimum height = 1cm] (wc) {wc};
+    % head
+    \node[draw, above right = 0pt and 30pt of wcAndHead.south east,
+                minimum width = 1cm, minimum height = 1cm] (head) {head};
+    \node[draw, left = 10pt of pP] (file)
+                {\includegraphics[width=1cm]{./images/file.png}};
+
+    \coordinate (pPbZIn) at ($ (pP.north east) + (0,-1.50) $);
+    \coordinate (pPbOIn) at ($ (pP.south east) + (0,2.5) $);
+    \coordinate (bZlsIn) at ($ (batchZero.north east) + (0,-0.5) $);
+    \coordinate (bZgrepInR) at ($ (grep.south west) + (0,0.3) $);
+    \coordinate (bZgrepInL) at ($ (batchZero.south east) + (0,0.3) $);
+    \coordinate (bZgrepOutL) at ($ (batchZero.south east) + (0,0.7) $);
+    \coordinate (bZgrepOutR) at ($ (grep.north west) + (0,-0.3) $);
+    \coordinate (bOpsInL) at ($ (batchOne.north east) + (0,-0.5) $);
+    \coordinate (bOwcAndHeadOutL) at ($ (batchOne.south east) + (0,2.72) $);
+    \coordinate (bOwcAndHeadOutR) at ($ (wcAndHead.north west) + (0,-0.3) $);
+    \coordinate (bOwcAndHeadInR) at ($ (wcAndHead.south west) + (0,0.3) $);
+    \coordinate (bOwcAndHeadInL) at ($ (batchOne.south east) + (0,0.3) $);
+    \coordinate (wcAndHeadwcOutL) at ($(wcAndHead.north east) + (0,-0.3)$);
+    \coordinate (wcAndHeadwcOutR) at ($ (wc.north west) + (0,-0.3) $);
+    \coordinate (wcAndHeadwcInR) at ($ (wc.south west) + (0,0.3) $);
+    \coordinate (wcAndHeadwcInL) at ($ (wcAndHead.north east) + (0,-0.72) $);
+    \coordinate (wcAndHeadHeadOutL) at ($ (wcAndHead.south east) + (0,0.71) $);
+    \coordinate (wcAndHeadHeadOutR) at ($ (head.north west) + (0,-0.3) $);
+    \coordinate (wcAndHeadHeadInR) at ($ (head.south west) + (0,0.3) $);
+    \coordinate (wcAndHeadHeadInL) at ($ (wcAndHead.south east) + (0,0.3) $);
+
+    \draw[outsideFlow] (batchZero)--(pPbZIn);
+    \draw[outsideFlow] (batchOne)--(pPbOIn);
+    \draw[outsideFlow] (ls)--(bZlsIn);
+    \draw[outsideFlow] (bZgrepInR)--(bZgrepInL);
+    \draw[outsideFlow] (bZgrepOutL)--(bZgrepOutR);
+    \draw[outsideFlow] (ps)--(bOpsInL);
+    \draw[outsideFlow] (bOwcAndHeadOutL)--(bOwcAndHeadOutR);
+    \draw[outsideFlow] (bOwcAndHeadInR)--(bOwcAndHeadInL);
+    \draw[outsideFlow] (wcAndHeadwcOutL)--(wcAndHeadwcOutR);
+    \draw[outsideFlow] (wcAndHeadwcInR)--(wcAndHeadwcInL);
+    \draw[outsideFlow] (wcAndHeadHeadOutL)--(wcAndHeadHeadOutR);
+    \draw[outsideFlow] (wcAndHeadHeadInR)--(wcAndHeadHeadInL);
+    \draw[outsideFlow, color=yellow] (file) |- (pP.north west);
+    \draw[outsideFlow, color=orange]
+                            (pP.south)--($(pP.south) + (0,-0.2)$)-|(file);
+
+    % Parent Process
+    \draw[insideFlowRead] (pPbZIn) to[out=200,in=90] (pP.south);
+    \draw[insideFlowRead] (pPbOIn) to[out=180,in=90] (pP.south);
+    % Batch 0
+    \node[draw, ballColor, fill=ballColor, minimum size=2mm, circle]
+            at (batchZero) (batchZeroBall) {};
+    \draw[insideFlowRead] (bZlsIn) to[bend right=40] (batchZeroBall);
+    \draw[insideFlowWrite] (batchZeroBall) to[bend right=15] (bZgrepOutL);
+    \draw[insideFlowRead] (bZgrepInL) to[bend left=35] (batchZeroBall);
+    \draw[insideFlowWrite] (batchZeroBall) -- (batchZero.west);
+    % Batch 1
+    \node[draw, ballColor, fill=ballColor, minimum size=2mm, circle]
+            at (batchOne) (batchOneBall) {};
+    \draw[insideFlowRead] (bOpsInL) to[bend right=15] (batchOneBall);
+    \draw[insideFlowWrite] (batchOneBall) to[bend right=15]
+                            (bOwcAndHeadOutL);
+    \draw[insideFlowRead] (bOwcAndHeadInL) to[bend left=15] (batchOneBall);
+    \draw[insideFlowWrite] (batchOneBall) -- (batchOne.west);
+    % wc & head -1
+    \coordinate (wcAndHeadInputCenter) at ($ (wcAndHead.north) + (0,-0.3) $);
+    \draw[insideFlowRead] (bOwcAndHeadOutR) -- (wcAndHeadInputCenter);
+    \draw[insideFlowWrite] (wcAndHeadInputCenter) -- (wcAndHeadwcOutL);
+    \draw[insideFlowWrite] (wcAndHeadInputCenter)
+                            to[bend right=15] (wcAndHeadHeadOutL);
+    \coordinate (wcAndHeadOutputCenter) at ($ (wcAndHead.south) + (0,0.3) $);
+    \draw[insideFlowRead] (wcAndHeadwcInL)
+                            to[bend right=15] (wcAndHeadOutputCenter);
+    \draw[insideFlowRead] (wcAndHeadHeadInL) -- (wcAndHeadOutputCenter);
+    \draw[insideFlowWrite] (wcAndHeadOutputCenter) -- (bOwcAndHeadInR);
+
+\matrix[varray, below right = 35pt and -10pt of pP] (legend) {
+    & Processo       &   & Ler de um pipe \\
+    & Pipe           &   & Escrever para um pipe \\
+    & Ler o notebook &   & Escrever para o notebook \\
+};
+\draw (legend-1-1.north east)++(0.38,0) node [above] {\textbf{Legenda:}};
+\node[draw, minimum size=0.5cm] at (legend-1-1) (b) {};
+\draw[outsideFlow] (legend-2-1.west)--(legend-2-1.east);
+\draw[insideFlowRead] (legend-1-3.west)--(legend-1-3.east);
+\draw[insideFlowWrite] (legend-2-3.west)--(legend-2-3.east);
+\draw[outsideFlow, color=yellow] (legend-3-1.west)--(legend-3-1.east);
+\draw[outsideFlow, color=orange] (legend-3-3.west)--(legend-3-3.east);
+
+\end{tikzpicture}
