@@ -5,8 +5,8 @@ coisa.c
 a.out
 batata.c
 <<<
-Agora podemos ordenar estes ficheiros:
-$| sort
+Agora podemos baralhar estes ficheiros:
+$| shuf
 >>>
 a.out
 batata.c

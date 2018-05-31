@@ -2,4 +2,4 @@ LS para dois
 $ ls
 $| grep .c & wc
 Sort
-$| sort
+$| shuf

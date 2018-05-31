@@ -1,12 +1,12 @@
 Este comando lista os ficheiros: SHOULD PARSE ERROR HERE
 $2| ls
-Agora podemos ordenar estes ficheiros:
-$| sort
+Agora podemos baralhar estes ficheiros:
+$| shuf
 E escolher o primeiro:
 $| head -1
 Este comando lista os ficheiros:
 $ ls
-Agora podemos ordenar estes ficheiros:
-$| sort
+Agora podemos baralhar estes ficheiros:
+$| shuf
 E escolher o primeiro:
 $| head -1

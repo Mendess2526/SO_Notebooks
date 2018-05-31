@@ -1,10 +1,10 @@
 Este comando lista os ficheiros:
 $ ls
-Agora podemos ordenar estes ficheiros:
-$| sort
+Agora podemos baralhar estes ficheiros:
+$| shuf
 Break batch:
 $ whoam
 E escolher o primeiro do ls:
 $3| head -1
-Grep do sort
+Grep do shuf
 $3| grep .c

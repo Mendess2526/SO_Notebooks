@@ -1,3 +1,4 @@
 $ ls
 $| wc
+Missing pipe SHOULD PARSE ERROR HERE:
 $2 head -1
