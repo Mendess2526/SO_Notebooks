@@ -1,6 +1,9 @@
 #ifndef PARSE_TREE_H
 #define PARSE_TREE_H
-
+/**
+ * \file
+ * TODO
+ */
 #include "strings.h"
 #include "list.h"
 
@@ -9,7 +12,7 @@ typedef struct _parse_tree* ParseTree;
 typedef struct _command* Command;
 
 /**
- * Creates a new instance of the parse tree.
+ * \brief Creates a new instance of the parse tree.
  *
  * \param size The starting number of lines the tree holds
  */
@@ -41,16 +44,15 @@ ssize_t parse_tree_add_line(ParseTree pt, char* line, size_t length);
 Command parse_tree_get_batch(ParseTree pt, size_t batch);
 
 /**
- * Frees allocated memory used by the parse_tree.
+ * \brief Free allocated memory used by the parse_tree.
  *
  * \param pt The parse_tree instance.
  */
 void parse_tree_destroy(ParseTree pt);
 
 /**
- * \brief Dumps the parse_tree as a NULL terminated array of NULL terminated strings.
- *
- * Each string is a line in the file that this tree represents.
+ * \brief Dumps the parse_tree as a NULL terminated array of
+ * NULL terminated strings.
  *
  * \param pt The parse_tree instance.
  * \returns The array of strings.
@@ -58,14 +60,14 @@ void parse_tree_destroy(ParseTree pt);
 char** parse_tree_dump(ParseTree pt);
 
 /**
- * Prints the parse_tree to the screen. Used for debug purposes.
+ * \brief Prints the parse_tree to the screen. Used for debug purposes.
  *
  * \param pt The parse_tree instance.
  */
 void parse_tree_print(ParseTree pt);
 
 /**
- * Returns the command String in this command instance.
+ * \brief Returns the command String in this command instance.
  *
  * \param c The command string.
  * \returns The string with the command.
@@ -81,7 +83,7 @@ String command_get_command(Command c);
 void command_append_output(Command c, String s);
 
 /**
- * Returns the list of relative indexes of the commands that depend of
+ * \brief Returns the list of relative indexes of the commands that depend of
  * the given command.
  *
  * \param c The command instance.
@@ -91,7 +93,7 @@ void command_append_output(Command c, String s);
 IdxList command_get_dependants(Command c);
 
 /**
- * Returns the next command in the batch.
+ * \brief Returns the next command in the batch.
  *
  * \param c The command instance.
  * \returns The next command instance.

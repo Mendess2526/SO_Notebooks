@@ -1,6 +1,9 @@
 #ifndef EXEC_BATCH_H
 #define EXEC_BATCH_H
-
+/**
+ * \file
+ * \brief Executes batches and pipes their output to the calling process
+ */
 #include "parse_tree.h"
 
 /**

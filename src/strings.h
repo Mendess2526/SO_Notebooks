@@ -1,6 +1,9 @@
 #ifndef STRINGS_H
 #define STRINGS_H
-
+/**
+ * \file
+ * TODO
+ */
 #include <stdlib.h>
 #include <string.h>
 
