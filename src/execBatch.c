@@ -92,9 +92,12 @@ static void writeToPipes(Command c,
  */
 static void closePipes(Command c, Pipes inPipes, size_t i);
 
-int execBatch(Command c, int* pipfd){
+int execBatch(Command c, int* pipfd, int* pipErr){
     int pid = fork();
     if(pid) return pid;
+    dup2(pipErr[1], 2);
+    close(pipErr[1]);
+    close(pipErr[0]);
     signal(SIGINT, SIG_DFL);
     close(pipfd[0]);
 
@@ -124,11 +127,10 @@ int execBatch(Command c, int* pipfd){
         // Read cmd output
         while((n = read(pipes_index(outPipes, i)[0], buf, 1024)) > 0){
             // Write to parent pipe for storage
-            n = write(pipfd[1], buf, (size_t) n);
+            if(write(pipfd[1], buf, (size_t) n) == -1) _exit(-1);
             if(i < (cmdCount - 1)){
                 writeToPipes(cur, inPipes, buf, (size_t) n, i);
             }
-            if(n == -1) _exit(-1);
         }
         int status;
         wait(&status);
@@ -138,7 +140,7 @@ int execBatch(Command c, int* pipfd){
             LOG_FATAL("\n");
             _exit(1);
         }
-        if(write(pipfd[1], "\0", 1) == -1) _exit(-1); // Write the separated '\0'
+        if(write(pipfd[1], "\0", 1) == -1) _exit(-1); //Write the separated '\0'
         if(i < (cmdCount - 1))
             closePipes(cur, inPipes, i); // Close input pipes
     }

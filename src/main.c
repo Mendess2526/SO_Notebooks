@@ -19,7 +19,7 @@ void nuke(int i){
 
 static int handleFlags(int argc, char** argv);
 
-static ParseTree parse_and_exec(int fd, Pipes pipes, IdxList pids);
+static ParseTree parse_and_exec(int fd, Pipes pipes, IdxList pids, Pipes errPipes);
 
 static void read_from_pipes_write_batch(Command cmd, int* pp);
 
@@ -43,6 +43,7 @@ int main(int argc, char** argv){
     if(mode) return mode;
     // Open file to read from
     int fd;
+    int failCount = 0;
     size_t numFiles = ptr_list_len(FILE_NAMES);
     size_t i = 0;
     while(i < numFiles){
@@ -60,8 +61,9 @@ int main(int argc, char** argv){
 
         // Parse file and execute batches
         Pipes pipes = pipes_create(20);
+        Pipes errPipes = pipes_create(20);
         IdxList pids = idx_list_create(20);
-        ParseTree pt = parse_and_exec(fd, pipes, pids);
+        ParseTree pt = parse_and_exec(fd, pipes, pids, errPipes);
         if(pt){
             // Read outputs and write store them in the batches
             pipes_free(pipes);
@@ -69,11 +71,13 @@ int main(int argc, char** argv){
             // Write the tree to a file
             tree_to_file(pt, filename);
             parse_tree_destroy(pt);
+        }else{
+            failCount++;
         }
         if(I_STDIN) I_STDIN = 0;
         else i++;
     }
-    return 0;
+    return failCount;
 }
 
 void printHelp(char* arg){
@@ -112,27 +116,38 @@ int handleFlags(int argc, char** argv){
     return 0;
 }
 
-int waitForBatch(ParseTree pt, Pipes pipes, IdxList pids){
+int killChildren(IdxList pids){
+    for(size_t i = 0; i < idx_list_len(pids); i++){
+        kill(idx_list_index(pids, i), SIGINT);
+    }
+    LOG_FATAL("Batch failed\n");
+    return 1;
+}
+
+int waitForBatch(ParseTree pt, Pipes pipes, IdxList pids, Pipes errPipes){
     pid_t pid;
     int status;
     while((pid = wait(&status)) > 0){
-        if(!WIFEXITED(status) || WEXITSTATUS(status) != 0){
-            for(size_t i = 0; i < idx_list_len(pids); i++){
-                kill(idx_list_index(pids, i), SIGINT);
-            }
-            LOG_FATAL("Batch failed\n");
-            return 1;
-        }
+        if(!WIFEXITED(status) || WEXITSTATUS(status) != 0) killChildren(pids);
         ssize_t i = idx_list_find(pids, (size_t) pid);
-        if(i < 0) LOG_WARNING("Missing pid\n");
-        else
+        if(i < 0){ LOG_WARNING("Missing pid\n");
+        }else{
+            char buf[1024];
+            ssize_t n;
+            int e = 0;
+            while((n = read(pipes_index(errPipes, (size_t) i)[0], buf, 1024)) > 0){
+                e = 1;
+                if(write(2, buf, n) == -1) _exit(-1);
+            }
+            if(e) killChildren(pids);
             read_from_pipes_write_batch(parse_tree_get_batch(pt, (size_t) i),
                                         pipes_index(pipes, (size_t) i));
+        }
     }
     return 0;
 }
 
-ParseTree parse_and_exec(int fd, Pipes pipes, IdxList pids){
+ParseTree parse_and_exec(int fd, Pipes pipes, IdxList pids, Pipes errPipes){
     ParseTree pt = parse_tree_create(20);
     char* buff = NULL;
     size_t len;
@@ -152,19 +167,21 @@ ParseTree parse_and_exec(int fd, Pipes pipes, IdxList pids){
     if(!I_STDIN) close(fd);
     for(size_t i = 0; i < batchCount; i++){
         pipes_append(pipes);
+        pipes_append(errPipes);
         pid_t pid = execBatch(parse_tree_get_batch(pt, i),
-                              pipes_last(pipes));
+                              pipes_last(pipes), pipes_last(errPipes));
         close(pipes_last(pipes)[1]);
+        close(pipes_last(errPipes)[1]);
         if(pid > 0)
             idx_list_append(pids, (size_t) pid);
         else
             LOG_WARNING("Couldn't fork\n");
-        if(SEQUENTIAL && waitForBatch(pt, pipes, pids)){
+        if(SEQUENTIAL && waitForBatch(pt, pipes, pids, errPipes)){
             parse_tree_destroy(pt);
             return NULL;
         }
     }
-    if(!SEQUENTIAL && waitForBatch(pt, pipes, pids)){
+    if(!SEQUENTIAL && waitForBatch(pt, pipes, pids, errPipes)){
         parse_tree_destroy(pt);
         return NULL;
     }

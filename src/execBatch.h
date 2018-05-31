@@ -14,6 +14,6 @@
  * \param pipfd The pipe where the outputs will be writen to.
  * \returns The PID of the process that executes the batch.
  */
-int execBatch(Command c, int* pipfd);
+int execBatch(Command c, int* pipfd, int* piperr);
 
 #endif /* EXEC_BATCH_H */
