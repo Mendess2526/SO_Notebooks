@@ -7,28 +7,28 @@
 #include "strings.h"
 
 /**
- * Logs a fatal error message.
+ * \brief Logs a fatal error message.
  *
  * \param message The message to log.
  */
 void LOG_FATAL(char* message);
 
 /**
- * Logs a fatal error message.
+ * \brief Logs a fatal error message.
  *
  * \param message The message to log.
  */
 void LOG_FATAL_STRING(String message);
 
 /**
- * Logs a critical error and returns from the current function.
+ * \brief Logs a critical error and returns from the current function.
  *
  * \param message The message to log.
  */
 #define LOG_CRITICAL(message) _log_CRITICAL(message); return;
 
 /**
- * Logs a critical error message. Should be used in conjunction with
+ * \brief Logs a critical error message. Should be used in conjunction with
  * the LOG_CRITICAL macro.
  *
  * \param message The message to log.
@@ -36,7 +36,7 @@ void LOG_FATAL_STRING(String message);
 void _log_CRITICAL(char* message);
 
 /**
- * Logs a parse error and terminates the program.
+ * \brief Logs a parse error and terminates the program.
  *
  * \param line The line where the error was found.
  * \param lineNumber The number of the line in the file.
@@ -46,14 +46,14 @@ void _log_CRITICAL(char* message);
 void LOG_PARSE_ERROR(String line, int lineNumber, char* message, int errOffset);
 
 /**
- * Logs a warning message.
+ * \brief Logs a warning message.
  *
  * \param message The message to log.
  */
 void LOG_WARNING(char* message);
 
 /**
- * Logs a warning message.
+ * \brief Logs a warning message.
  *
  * \param message The message to log.
  */

@@ -7,26 +7,26 @@
 #include <stdlib.h>
 
 /**
-* A list of pipes
-*/
+ * \brief A list of pipes
+ */
 typedef struct _pipes* Pipes;
 
 /**
- * Creates a list of pipes.
+ * \brief Creates a list of pipes.
  *
  * \param size Initial size of the list
  */
 Pipes pipes_create(size_t size);
 
 /**
- * Appends a new pipe to the list
+ * \brief Appends a new pipe to the list
  *
  * \param p The list
  */
 int pipes_append(Pipes p);
 
 /**
- * Get the pipe stored at the given index
+ * \brief Get the pipe stored at the given index
  *
  * \param p The list
  * \param idx The index
@@ -34,21 +34,21 @@ int pipes_append(Pipes p);
 int* pipes_index(Pipes p, size_t idx);
 
 /**
- * Get the size of the list
+ * \brief Get the size of the list
  *
  * \param p The list
  */
 size_t pipes_len(Pipes p);
 
 /**
- * Get the last pipe in the list
+ * \brief Get the last pipe in the list
  *
  * \param p List
  */
 int* pipes_last(Pipes p);
 
 /**
- * Close both sides of the pipe at the given index
+ * \brief Close both sides of the pipe at the given index
  *
  * \param p The list
  * \param i The index
@@ -56,7 +56,7 @@ int* pipes_last(Pipes p);
 void pipes_close(Pipes p, size_t i);
 
 /**
- * Free the memory used by this list
+ * \brief Free the memory used by this list
  *
  * \param p List
  */
