@@ -202,12 +202,7 @@ void tree_to_file(ParseTree pt, char* filename){
         fd = 1;
     else
         fd = creat(filename, 0644);
-    char** dump = parse_tree_dump(pt);
-    int i = 0;
-    while(dump[i]){
-        if(write(fd, dump[i], strlen(dump[i])) == -1) _exit(-1);
-        if(write(fd, "\n", 1) == -1) _exit(-1);
-        free(dump[i++]);
-    }
-    free(dump);
+    String dump = parse_tree_dump(pt);
+    if(write(fd, dump.s, dump.length) == -1) _exit(1);
+    string_free(dump);
 }

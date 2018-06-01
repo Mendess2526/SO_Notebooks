@@ -307,14 +307,16 @@ static void tree_node_destroy(Node node){
 
 /* Utils */
 
-char* comment_dump(Comment c){
-    char* comment = (char*) malloc(sizeof(char) * c->comment.length + 1);
-    strncpy(comment, c->comment.s, c->comment.length);
-    comment[c->comment.length] = '\0';
-    return comment;
+String comment_dump(Comment c){
+    String final;
+    string_init(&final, c->comment.s, c->comment.length);
+    String newline;
+    string_init(&newline, "\n", 1);
+    string_append(&final, newline);
+    return final;
 }
 
-char* command_dump(Command c){
+String command_dump(Command c){
     size_t size = 1; // $
     if(c->dependency) size += 1; // |
     if(c->dependency > 1) size += 12; // dep num
@@ -352,27 +354,32 @@ char* command_dump(Command c){
         strncpy(cmd, OUTPUT_END, OUTPUT_END_LEN);
         cmd += OUTPUT_END_LEN;
     }
-    *cmd = '\0';
-    return command;
+    *cmd = '\n';
+    String final;
+    string_init(&final, command, cmd - command + 1);
+    return final;
 }
 
-char** parse_tree_dump(ParseTree pt){
+String parse_tree_dump(ParseTree pt){
     size_t numNodes = ptr_list_len(pt->nodes);
-    char** file = (char**) malloc(sizeof(char*) * (numNodes + 1));
-    file[numNodes] = NULL;
+    String file;
+    string_init(&file, NULL, 0);
     for(size_t i = 0; i < numNodes; i++){
         Node n = ptr_list_index(pt->nodes, i);
         switch(n->type){
             case N_COMMENT:
-                file[i] = comment_dump(n->c.comment);
+                string_append(&file, comment_dump(n->c.comment));
                 break;
             case N_COMMAND:
-                file[i] = command_dump(n->c.command);
+                string_append(&file, command_dump(n->c.command));
                 break;
             default:
                 break;
         }
     }
+    String null;
+    string_init(&null, "\0", 1);
+    string_append(&file, null);
     return file;
 }
 

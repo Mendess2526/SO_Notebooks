@@ -51,13 +51,12 @@ Command parse_tree_get_batch(ParseTree pt, size_t batch);
 void parse_tree_destroy(ParseTree pt);
 
 /**
- * \brief Dumps the parse_tree as a NULL terminated array of
- * NULL terminated strings.
+ * \brief Dumps the parse_tree as a String.
  *
  * \param pt The parse_tree instance.
  * \returns The array of strings.
  */
-char** parse_tree_dump(ParseTree pt);
+String parse_tree_dump(ParseTree pt);
 
 /**
  * \brief Prints the parse_tree to the screen. Used for debug purposes.
