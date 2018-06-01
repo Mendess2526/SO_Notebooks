@@ -19,6 +19,12 @@ void string_append(String* dest, String src){
     dest->length = dest->length + src.length;
 }
 
+void string_append_array(String* dest, char* array, size_t len){
+    String src;
+    string_init(&src, array, len);
+    string_append(dest, src);
+}
+
 void string_free(String s){
     free(s.s);
 }

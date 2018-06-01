@@ -310,54 +310,31 @@ static void tree_node_destroy(Node node){
 String comment_dump(Comment c){
     String final;
     string_init(&final, c->comment.s, c->comment.length);
-    String newline;
-    string_init(&newline, "\n", 1);
-    string_append(&final, newline);
+    string_append_array(&final, "\n", 1);
     return final;
 }
 
 String command_dump(Command c){
-    size_t size = 1; // $
-    if(c->dependency) size += 1; // |
-    if(c->dependency > 1) size += 12; // dep num
-    size += c->command.length; // Command string
-    if(c->output.s)
-        size += OUTPUT_START_LEN // Output
-                + c->output.length
-                + OUTPUT_END_LEN;
-    size += 1; // '\0'
+    String cmd;
+    string_init(&cmd, NULL, 0);
 
-    char* command = (char*) malloc(sizeof(char) * size);
-    char* cmd = command;
-
-    strncpy(cmd, "$", c->command.length);
-    cmd += 1;
+    string_append_array(&cmd, "$", 1);
     if(c->dependency){
         if(c->dependency > 1){
             char num[12];
             size_t len = int2string((int) c->dependency, num, 12);
-            strncpy(cmd, num, len);
-            cmd += len;
+            string_append_array(&cmd, num, len);
         }
-        strncpy(cmd, "|", c->command.length);
-        cmd += 1;
+        string_append_array(&cmd, "|", 1);
     }
-    strncpy(cmd, c->command.s, c->command.length);
-    cmd += c->command.length;
+    string_append(&cmd, c->command);
     if(c->output.s){
-        strncpy(cmd, "\n"OUTPUT_START"\n", OUTPUT_START_LEN);
-        cmd += OUTPUT_START_LEN;
-
-        strncpy(cmd, c->output.s, c->output.length);
-        cmd += c->output.length;
-
-        strncpy(cmd, OUTPUT_END, OUTPUT_END_LEN);
-        cmd += OUTPUT_END_LEN;
+        string_append_array(&cmd, "\n"OUTPUT_START"\n", OUTPUT_START_LEN);
+        string_append_array(&cmd, c->output.s,          c->output.length);
+        string_append_array(&cmd, OUTPUT_END,           OUTPUT_END_LEN);
     }
-    *cmd = '\n';
-    String final;
-    string_init(&final, command, cmd - command + 1);
-    return final;
+    string_append_array(&cmd, "\n", 1);
+    return cmd;
 }
 
 String parse_tree_dump(ParseTree pt){
@@ -377,9 +354,7 @@ String parse_tree_dump(ParseTree pt){
                 break;
         }
     }
-    String null;
-    string_init(&null, "\0", 1);
-    string_append(&file, null);
+    string_append_array(&file, "\0", 1);
     return file;
 }
 

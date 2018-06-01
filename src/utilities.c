@@ -6,25 +6,57 @@
 #include <stdio.h>
 #include <string.h>
 
-char* readLn(int fd, size_t* nBytes){
-    size_t size = 0;
-    size_t buffSize = 1;
-    *nBytes = 0;
-    char c;
-    char* buff = NULL;
-    while(0 < read(fd, &c, 1)){
-        if(c == '\0' || c == '\n'){
-            *nBytes = size;
-            return buff;
-        }
-        if(size >= (buffSize - 1)){
-            buffSize *= 2;
-            buff = realloc(buff, sizeof(char) * buffSize);
-        }
-        buff[size++] = c;
+ssize_t indexOf(const char* str, char c, size_t len){
+    size_t i = 0;
+    while(i < len){
+        if(str[i] == c) return i;
+        i++;
     }
-    *nBytes = size;
-    return buff;
+    return -1;
+}
+
+static inline void strshift(char* str, size_t offset, size_t n){
+    for(size_t i = 0; i < n; i++, offset++)
+        str[i] = str[offset];
+}
+
+char* readLn(int fd, size_t* nBytes){
+    static char* buff;
+    static size_t buffSize;
+    static size_t buffLoad;
+    *nBytes = 0;
+    if(buff == NULL){
+        buffSize = 1024;
+        buffLoad = 0;
+        buff = malloc(sizeof(char) * buffSize);
+    }
+    ssize_t newLineOffset;
+    if((newLineOffset = indexOf(buff, '\n', buffLoad)) < 0){
+        size_t n;
+        while(0 < (n = read(fd, buff + buffLoad, buffSize - buffLoad))){
+            char* chunk = buff + buffLoad;
+            buffLoad += n;
+            if((newLineOffset = indexOf(chunk, '\n', n)) > -1) break;
+            if(buffLoad >= buffSize){
+                buffSize *= 2;
+                buff = realloc(buff, sizeof(char) * buffSize);
+            }
+        }
+    }
+    if(newLineOffset > -1){
+        char* ret = str_n_dup(buff, newLineOffset);
+        *nBytes = newLineOffset;
+        strshift(buff, newLineOffset + 1, buffLoad - newLineOffset - 1);
+        buffLoad -= (newLineOffset + 1);
+        return ret;
+    }else{
+        char* ret = str_n_dup(buff, buffLoad);
+        *nBytes = buffLoad;
+        free(buff);
+        buff = NULL;
+        buffLoad = 0;
+        return ret;
+    }
 }
 
 char** words(const char* string, size_t len){
@@ -69,12 +101,14 @@ size_t int2string(int num, char* string, size_t len){
 }
 
 char* str_n_dup(const char* str, size_t len){
+    if(len < 1 || !str) return NULL;
     char* s = malloc(sizeof(char) * len);
     strncpy(s, str, len);
     return s;
 }
 
 char* str_dup(const char* str){
+    if(!str) return NULL;
     return str_n_dup(str, strlen(str) + 1);
 }
 
