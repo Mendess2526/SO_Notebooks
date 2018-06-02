@@ -71,61 +71,61 @@
     com comandos de bash alterando estes para incluir o \textit{output} destes.
 
     Este processamento foi implementando com recurso a \textit{system calls}
-    e à criação de multiplos processos para que houvesse o maximo de
-    paralelismo possivel.
+    e à criação de múltiplos processos para que houvesse o máximo de
+    paralelismo possível.
 
 \chapter{Descrição do Problema}
     Os ficheiros de texto a ser processados, chamados \textit{notebooks}, podem
-    conter 3 tipos de conteudo:
+    conter 3 tipos de conteúdo:
     \begin{itemize}
-        \item Comentarios
-        \item Commandos
+        \item Comentários
+        \item Comandos
         \item Output
     \end{itemize}
-    \section{Comentarios}
+    \section{Comentários}
         Texto simples que não é alterado de forma alguma durante o
         processamento. Estes não podem começar por \$, '\outputStart' ou
         '\outputEnd'.
     \section{Comando}
-        Linha começada por \$ que contem o comando que vai ser executado.
-        Este tipo de linha suporta multiplas opções adicionais.
+        Linha começada por \$ que contém o comando que vai ser executado.
+        Este tipo de linha suporta múltiplas opções adicionais.
         \subsection{Pipe para um comando anterior}
             Se, seguido do \$, estiver um número N e um $|$ o input do comando
             será obtido do comando que estiver N posições acima no ficheiro.
             Caso este número seja 1 este pode ser omitido.
-        \subsection{Pipelining numa so linha}
-            Um comando pode ser na verdade um encadeamento de varios comandos
+        \subsection{Pipelining numa só linha}
+            Um comando pode ser, na verdade, um encadeamento de vários comandos
             unidos por pipes, por exemplo
             \mintinline{bash}{grep -v ˆ# /etc/passwd | cut -f7 -d: | uniq},
             neste caso o comportamento é o esperado: O input desta sequência
             poderá ser obtido de um comando anterior e o seu output
-            redirecionado para um proximo comando no ficheiro.
+            redirecionado para um próximo comando no ficheiro.
         \subsection{Execução em paralelo}
-            Num so linha começada por \$ varios comandos podem ser executados
-            separados por \&. Neste caso os seu output é misturado,
-            indiscrimidamente na sua secção de output. Caso esta linha esteja
-            a receber input de uma anterior, este input é distribuido para
+            Numa só linha começada por \$ vários comandos podem ser executados
+            separados por \&. Neste caso o seu output é misturado
+            indiscriminadamente na sua secção de output. Caso esta linha esteja
+            a receber input de uma anterior, este input é distribuído para
             todos os comandos separados por \&. Inversamente, caso algum
             comando esteja a receber o seu input desta linha, este receberá
             o output de todos os comandos presentes nesta linha também por
-            ordem "aleatoria".
+            ordem "aleatória".
         \subsection{Redirecionamento para ficheiros}
             Uma linha de comando suporta também o Redirecionamento para
             ficheiros usando a sintaxe usual da \textit{bash}:
             \mintinline{bash}{<, >, >>, 2>, &>}.
             Quando este tipo de redirecionado é utilizado, no entanto,
-            impossibilita algumas das opções anteriores, por exemplo,
+            impossibilita algumas das opções anteriores. Por exemplo,
             se o output for redirecionado para um ficheiro, nenhum dos comandos
             seguintes pode depender deste output.
 
 \chapter{Parsing}
     Para fazer o \textit{parsing} do notebook foi concebida uma estrutura
-    dinamica que vai verificando se o ficheiro está construido corretamente
-    enquanto organiza o seu conteudo de forma a, posteriormente, poder ser
+    dinâmica que vai verificando se o ficheiro está construido corretamente
+    enquanto organiza o seu conteúdo de forma a, posteriormente, poder ser
     processado mais facilmente.
 
-    A estrutura em sí é um array dinamico de \textbf{Node}s que podem ser
-    commentários ou comandos. Caso seja um comentário trata-se apenas de
+    A estrutura em si é um array dinâmico de \textbf{Node}s que podem ser
+    comentários ou comandos. Caso seja um comentário trata-se apenas de
     uma string.
     \begin{figure}[h]
         \centering
@@ -155,12 +155,12 @@
 
     A função de cada um dos campos é, respetivamente:
     \begin{itemize}
-        \item \mintinline{C}{dependency}: Quantas posições atráz está o comando
-            de, cujo output, este depende. Se este número for 0 o comando não
+        \item \mintinline{C}{dependency}: Quantas posições atrás está o comando
+            de cujo output este depende. Se este número for 0 o comando não
             depende.
 
-        \item \mintinline{C}{command}: O comando em sí. Neste ponto não são
-            incluidos o \$ nem o $|$ e/ou números presentes no inicio da linha
+        \item \mintinline{C}{command}: O comando em si. Neste ponto não são
+            incluídos o \$ nem o $|$ e/ou números presentes no inicio da linha
             do notebook.
 
         \item \mintinline{C}{output}: O output deste comando. Inicialmente
@@ -169,19 +169,19 @@
         \item \mintinline{C}{dependants}: O array das posições onde estão os
             comandos que dependem do output deste.
 
-        \item \mintinline{C}{pipe}: O apontador para o proximo comando na
+        \item \mintinline{C}{pipe}: O apontador para o próximo comando na
             \textbf{Batch}.
     \end{itemize}
 
     \section{Batches}
         A organização dos comandos é feita sobre a forma de batches. Os comandos
         que estejam interligados de alguma forma estão todos colocados na mesma
-        lista ligada, designada batch. Desta forma é possivel definir blocos do
-        notebook que são independentes uns dos outros para que possam ser
+        lista ligada, designada batch. Desta forma é possível definir blocos do
+        notebook, que são independentes uns dos outros, para que possam ser
         executados de forma paralela.
 
     \section{Ilustração da estrutura}
-        Dada esta organização um exemplo de como um notebook é traduzido para
+        Dada esta organização, um exemplo de como um notebook é traduzido para
         esta estrutura pode ser o seguinte:
 
         \begin{figure}[H]
@@ -204,8 +204,8 @@
         \end{figure}
 
         Neste exemplo podemos ver que foram produzidos 2 batches. O Batch 0 é
-        constituido pelo \mintinline{bash}{ls}, \mintinline{bash}{grep .c} e
-        \mintinline{bash}{tail -2}. O Batch 1 é constituido pelo
+        constituído pelo \mintinline{bash}{ls}, \mintinline{bash}{grep .c} e
+        \mintinline{bash}{tail -2}. O Batch 1 é constituído pelo
         \mintinline{bash}{ps} e pelo \mintinline{bash}{head -2}.
 
 \chapter{Execução de comandos}
@@ -213,31 +213,31 @@
     \section{Processo Pai}
         Feito o parsing, da-se inicio à execução dos comandos. Primeiro o
         processo pai cria um filho para cada batch e, de seguida, espera que
-        estes morram para receber os resultado acumulado dos comandos
-        executados por cada um atravez de um pipe. A partir deste resultado
-        atualiza o output dos comandos e por fim converte a estrutura em
+        estes morram para receber o resultado acumulado dos comandos
+        executados por cada um através de um pipe. A partir deste resultado
+        atualiza o output dos comandos e, por fim, converte a estrutura em
         texto que escreve no ficheiro.
 
     \section{Processo Batch}
-        Cada filho ira trabalhar sobre um, batch (lista ligada de comandos),
-        criando um filho para cada nó da lista. Aqui é também decidido o metodo
+        Cada filho irá trabalhar sobre um batch (lista ligada de comandos),
+        criando um filho para cada nó da lista. Aqui é também decidido o método
         de execução de cada nodo.
         \subsection{Commando simples}
             Caso seja um comando simples é apenas redirecionado o seu input e
             output para pipes que comunicam com o processo encarregue do batch a
-            que pertence. Está aqui incluido também o redirecionamento para
+            que pertence. Está aqui incluído, também, o redirecionamento para
             ficheiros, caso seja necessário.
         \subsection{Commando com pipelines}
-            Caso seja um comando com pipelines o input e output é redirecionado
-            de forma analoga ao caso anterior e o encadeamento é feito
+            Caso seja um comando com pipelines, o input e output é redirecionado
+            de forma análoga ao caso anterior e o encadeamento é feito
             corretamente.
         \subsection{Dois ou mais comandos em paralelo}
             Caso o nodo contenha um ou mais comandos separados por \& o
             tratamento é mais complexo. Primeiro, este filho cria um outro
             filho para cada comando que o irá executar com \textit{stdin}
             e \textit{stdout} redirecionados para um pipe cada. Enquanto os
-            comandos executam o pai destes, filho do batch, escreve para todos
-            o input que esta a receber do seu pai (batch) e agrega todo o
+            comandos executam, o pai destes (filho do batch) escreve para todos
+            o input que está a receber do seu pai (batch) e agrega todo o
             output que lê dos seus filhos e envia-o, também, para o seu pai.
 \clearpage
     \section{Ilustração dos processos}
@@ -269,7 +269,7 @@
         de passar e termina execução.
     \section{Escrever para o \textit{stdout}}
         A flag \mintinline{text}{-o} faz com que o output produzido seja
-        impresso para o \textit{standard output} invez de alterar o ficheiro
+        impresso para o \textit{standard output} em vez de alterar o ficheiro
         de origem.
     \section{Execução sequencial}
         A flag \mintinline{text}{-s} faz com que as batches sejam executadas
@@ -277,41 +277,41 @@
         terminar.
     \section{Ler do \textit{stdin}}
         Se o nome do ficheiro for \mintinline{text}{-} o input do programa será
-        obtido do \textit{standard input} invez de obtido de um ficheiro. Esta
+        obtido do \textit{standard input} em vez de obtido de um ficheiro. Esta
         opção automaticamente ativa a opção de escrever para o \textit{stdout}.
 
 \chapter{Controlo de erros}
-    Durante a fase de \textit{parsing} são detetados erros de sintaxe que possam
-    existir, caso algum seja detetado o processamente é abortado e uma mensagem
-    a indicar o erro que ocurreu é impressa para o \textit{stderr}.
+    Durante a fase de \textit{parsing} são detetados os erros de sintaxe que possam
+    existir. Caso algum seja detetado o processamento é abortado e uma mensagem
+    a indicar o erro que ocorreu é impressa para o \textit{stderr}.
 
     \begin{figure}[h]
         \centering
         \includegraphics[width=0.5\textwidth]{./images/parseError.png}
-        \caption{Messagem de erro enviada caso seja pedida uma dependencia
-                    impossivel}
+        \caption{Messagem de erro enviada caso seja pedida uma dependência
+                    impossível}
         \label{fig:parseError}
     \end{figure}
 
-    Durante a execução dos comandos se algum destes fizer o
-    \mintinline{C}{execvp()} falhar a execução de todos os outros é interrompida
+    Durante a execução dos comandos, se algum destes fizer o
+    \mintinline{C}{execvp()} falhar, a execução de todos os outros é interrompida
     e o ficheiro fonte permanece inalterado.
 
     \begin{figure}[h]
         \centering
         \includegraphics[width=0.5\textwidth]{./images/execError.png}
-        \caption{Erro apresentado no ecra caso o comando não exita. Neste caso
+        \caption{Erro apresentado no ecrã caso o comando não exista. Neste caso
                     para o comando \mintinline{text}{whoam}}
     \end{figure}
 
 \chapter{Conclusões e Trabalho Futuro}
     Em suma, o grupo considera que o trabalho foi realizado na sua
-    totalidade de forma estruturada, respondendo a todos os requisitos e ainda
+    totalidade, de forma estruturada, respondendo a todos os requisitos, e ainda
     adicionando requisitos não pedidos explicitamente.
 
     Um aspeto que poderia ser melhorado era permitir que o output fosse
-    redirecionado de e para ficheiros sem comprometer as restantes
-    funcionalidades, no entanto, esta falha pode ser contornada com as opções
+    redirecionado de e para ficheiros, sem comprometer as restantes
+    funcionalidades. No entanto, esta falha pode ser contornada com as opções
     implementadas, apesar de ser menos eficiente.
 
 \end{document}
