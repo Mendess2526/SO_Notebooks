@@ -281,9 +281,9 @@
         opção automaticamente ativa a opção de escrever para o \textit{stdout}.
 
 \chapter{Controlo de erros}
-    Durante a fase de \textit{parsing} são detetados os erros de sintaxe que possam
-    existir. Caso algum seja detetado o processamento é abortado e uma mensagem
-    a indicar o erro que ocorreu é impressa para o \textit{stderr}.
+    Durante a fase de \textit{parsing} são detetados os erros de sintaxe que
+    possam existir. Caso algum seja detetado o processamento é abortado e uma
+    mensagem a indicar o erro que ocorreu é impressa para o \textit{stderr}.
 
     \begin{figure}[h]
         \centering
@@ -294,8 +294,14 @@
     \end{figure}
 
     Durante a execução dos comandos, se algum destes fizer o
-    \mintinline{C}{execvp()} falhar, a execução de todos os outros é interrompida
-    e o ficheiro fonte permanece inalterado.
+    \mintinline{C}{execvp()} falhar, ou escrever para o strderr, a execução de
+    todos os outros é interrompida e o ficheiro fonte permanece inalterado.
+    A interrupção dos processsos é feita da seguinte forma: Quando um comando
+    falha este alerta o seu pai, que, por sua vez, alerta o seu pai. Este
+    processo repete-se sucessivamente até que o topo da hierarquia seja
+    alertado. Este sinaliza todos os seus filhos para que matem os seus
+    filhos até que todos os processos tenham sido terminados. Atingindo
+    este ponto o processo no topo da hierarquia termina a propria execução.
 
     \begin{figure}[h]
         \centering
