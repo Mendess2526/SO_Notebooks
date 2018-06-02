@@ -20,11 +20,22 @@ static inline void strshift(char* str, size_t offset, size_t n){
         str[i] = str[offset];
 }
 
+static inline void resetBuff(char** buff, size_t* load){
+    free(*buff);
+    *buff = NULL;
+    *load = 0;
+}
+
+
 char* readLn(int fd, size_t* nBytes){
     static char* buff;
     static size_t buffSize;
     static size_t buffLoad;
     *nBytes = 0;
+    if(fd < 0){
+        resetBuff(&buff, &buffLoad);
+        return NULL;
+    }
     if(buff == NULL){
         buffSize = 1024;
         buffLoad = 0;
@@ -52,9 +63,7 @@ char* readLn(int fd, size_t* nBytes){
     }else{
         char* ret = str_n_dup(buff, buffLoad);
         *nBytes = buffLoad;
-        free(buff);
-        buff = NULL;
-        buffLoad = 0;
+        resetBuff(&buff, &buffLoad);
         return ret;
     }
 }

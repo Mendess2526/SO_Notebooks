@@ -141,6 +141,7 @@ ParseTree parse_and_exec(int fd, Pipes pipes, IdxList pids){
         buff = readLn(fd, &len);
         ssize_t batch = parse_tree_add_line(pt, buff, len);
         if(batch == -2){
+            readLn(-1, &len);
             parse_tree_destroy(pt);
             return NULL;
         }else if(batch != -1){
