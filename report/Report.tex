@@ -15,7 +15,7 @@
 \usepackage[cache=false]{minted}
 \usepackage{pdflscape}
 \usepackage[titletoc]{appendix}
-\usepackage{hyperref}
+\usepackage[hidelinks]{hyperref}
 \geometry{
  a4paper,
  top=2cm,
@@ -222,12 +222,12 @@
         Cada filho irá trabalhar sobre um batch (lista ligada de comandos),
         criando um filho para cada nó da lista. Aqui é também decidido o método
         de execução de cada nodo.
-        \subsection{Commando simples}
+        \subsection{Comando simples}
             Caso seja um comando simples é apenas redirecionado o seu
             \textit{input} e \textit{output} para pipes que comunicam com o
             processo encarregue do batch a que pertence. Está aqui incluído,
             também, o redirecionamento para ficheiros, caso seja necessário.
-        \subsection{Commando com pipelines}
+        \subsection{Comando com pipelines}
             Caso seja um comando com pipelines, o \textit{input} e
             \textit{output} é redirecionado de forma análoga ao caso anterior e
             o encadeamento é feito corretamente.
