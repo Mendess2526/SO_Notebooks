@@ -36,13 +36,6 @@ void idx_list_append(IdxList l, size_t val);
 ssize_t idx_list_index(IdxList l, size_t idx);
 
 /**
- * Get the last element of the list.
- *
- * \param l The list
- */
-ssize_t idx_list_last(IdxList l);
-
-/**
  * Get the size of the list
  *
  * \param l The list
@@ -57,6 +50,13 @@ size_t idx_list_len(IdxList l);
  */
 ssize_t idx_list_find(IdxList l, size_t idx);
 
+/**
+ * Sets the value at the given index.
+ *
+ * @param l The list.
+ * @param idx The index to set. This must be smaller then the size of the list.
+ * @param val The value to set.
+ */
 void idx_list_set(IdxList l, size_t idx, size_t val);
 
 /**

@@ -11,13 +11,21 @@
 #include <fcntl.h>
 #include <stdint.h>
 
+typedef struct _redirects{
+    char* std_out;
+    short append_out;
+    char* std_err;
+    short append_err;
+    char* std_in;
+}Redirects;
+
 /**
  * Checks if a String contains a '|' character.
  *
  * \param s String to check.
  * \returns 1 if contains 0 otherwise.
  */
-static int has_pipes(String s);
+static int hasPipes(String s);
 
 /**
  * Checks if a String contains a '$' character.
@@ -25,7 +33,17 @@ static int has_pipes(String s);
  * \param s String to check
  * \returns 1 if contains 0 otherwise.
  */
-static int has_parallel(String s);
+static int hasParallel(String s);
+
+/**
+ * Updates an instance of the redirects struct with the redirection rules
+ * set by the command.
+ *
+ * @param redirects The struct to update.
+ * @param line The line to parse.
+ * @param len The length of the line.
+ */
+static void parseRedirects(Redirects* redirects, const char* line, size_t len);
 
 /**
  * Removes redirections from a command.
@@ -41,10 +59,14 @@ static void cleanCommand(char** words);
  * \param inPipes The pipes where the input comes from.
  * \param outPipes The pipes where the output is writen to.
  */
-static int execCommand(String cmd,
-                        size_t i,
-                        Pipes inPipes,
-                        Pipes outPipes);
+static int execCommand(String cmd, size_t i, Pipes inPipes, Pipes outPipes);
+
+/**
+ * \brief Handler for SIGINT when running commands in parallel.
+ *
+ * Kills all of the parallel processes and then itself.
+ */
+static void intParallelHandler();
 
 /**
  * Executes a list of commands in parallel, distributing the input
@@ -54,10 +76,7 @@ static int execCommand(String cmd,
  * \param inPipes The pipes where the input comes from.
  * \param outPipes The pipes where the output is writen to.
  */
-static int execCommandParallel(String cmd,
-                                size_t i,
-                                Pipes inPipes,
-                                Pipes outPipes);
+static int execCommandParallel(String cmd, size_t i, Pipes inPipes, Pipes outPipes);
 
 /**
  * Executes a line of piped commands
@@ -66,10 +85,8 @@ static int execCommandParallel(String cmd,
  * \param inPipes The pipes where the input comes from.
  * \param outPipes The pipes where the output is writen to.
  */
-static int execCommandPipes(String cmd,
-                             size_t i,
-                             Pipes inPipes,
-                             Pipes outPipes);
+static int execCommandPipes(String cmd, size_t i, Pipes inPipes, Pipes outPipes);
+
 /**
  * Writes to the input pipes of all the dependencies of the given command.
  *
@@ -79,11 +96,8 @@ static int execCommandPipes(String cmd,
  * \param n The length of the pipe.
  * \param i The position of the command in the batch.
  */
-static void writeToPipes(Command c,
-                         Pipes inPipes,
-                         char* buf,
-                         size_t n,
-                         size_t i);
+static void writeToPipes(Command c, Pipes inPipes, char* buf, size_t n, size_t i);
+
 /**
  * Closes the input pipes of all the dependencies of the given command.
  *
@@ -93,6 +107,9 @@ static void writeToPipes(Command c,
  */
 static void closePipes(Command c, Pipes inPipes, size_t i);
 
+/**
+ * Kills all of the processes in the PIDS list
+ */
 static void killChildren();
 
 static IdxList PIDS;
@@ -100,7 +117,7 @@ static IdxList PIDS;
 int execBatch(Command c, int* pipfd, int* pipErr){
     int pid = fork();
     if(pid) return pid;
-    signal(SIGINT, killChildren);
+    signal(SIGINT, (__sighandler_t) killChildren);
     dup2(pipErr[1], 2);
     close(pipErr[1]);
     close(pipErr[0]);
@@ -115,10 +132,9 @@ int execBatch(Command c, int* pipfd, int* pipErr){
         if(i > 0) pipes_append(inPipes);
         pipes_append(outPipes);
         String cmd = command_get_command(cur);
-        int pid;
-        if(has_parallel(cmd))
+        if(hasParallel(cmd))
             pid = execCommandParallel(cmd, i, inPipes, outPipes);
-        else if(has_pipes(cmd))
+        else if(hasPipes(cmd))
             pid = execCommandPipes(cmd, i, inPipes, outPipes);
         else
             pid = execCommand(cmd, i, inPipes, outPipes);
@@ -126,7 +142,7 @@ int execBatch(Command c, int* pipfd, int* pipErr){
             LOG_FATAL("Couldn't fork\n");
             raise(SIGINT);
         }
-        idx_list_append(PIDS, pid);
+        idx_list_append(PIDS, (size_t) pid);
         if(i > 0) close(pipes_index(inPipes, i - 1)[0]);
         close(pipes_index(outPipes, i)[1]);
     }
@@ -167,33 +183,23 @@ void killChildren(){
     for(size_t i = 0; i < idx_list_len(PIDS); i++){
         ssize_t pid = idx_list_index(PIDS, i);
         if(pid > 0 && ((size_t) pid) < SIZE_MAX)
-            kill(pid, SIGINT);
+            kill((__pid_t) pid, SIGINT);
     }
 }
 
-int has_pipes(String s){
+int hasPipes(String s){
     for(size_t i = 0; i < s.length; i++)
         if(s.s[i] == '|') return 1;
     return 0;
 }
 
-int has_parallel(String s){
+int hasParallel(String s){
     for(size_t i = 0; i < s.length; i++)
         if(s.s[i] == '&' && s.length > i + 1 && s.s[i+1] != '>') return 1;
     return 0;
 }
 
-typedef struct _redirects{
-    char* std_out;
-    short append_out;
-    char* std_err;
-    short append_err;
-    char* std_in;
-}Redirects;
-
-static void command_parse_redirects(Redirects* redirects,
-                                    const char* line,
-                                    size_t len){
+void parseRedirects(Redirects* redirects, const char* line, size_t len){
     char** tokens = words(line, len);
     size_t i = 0;
     while(tokens[i]){
@@ -246,7 +252,7 @@ int execCommand(String cmd, size_t i, Pipes inPipes, Pipes outPipes){
     if(pid) return pid;
     signal(SIGINT, SIG_DFL);
     Redirects redirects = {0};
-    command_parse_redirects(&redirects, cmd.s, cmd.length);
+    parseRedirects(&redirects, cmd.s, cmd.length);
     if(redirects.std_in){
         int in = open(redirects.std_in, O_RDONLY);
         if(in < 0){
@@ -293,7 +299,7 @@ int execCommand(String cmd, size_t i, Pipes inPipes, Pipes outPipes){
     _exit(1);
 }
 
-void intParalelHandler(){
+void intParallelHandler(){
     killChildren();
     signal(SIGINT, SIG_DFL);
     kill(getpid(), SIGINT);
@@ -304,7 +310,7 @@ int execCommandParallel(String cmd, size_t i, Pipes inPipes, Pipes outPipes){
     if(pid) return pid;
     idx_list_free(PIDS);
     PIDS = idx_list_create(2);
-    signal(SIGINT, intParalelHandler);
+    signal(SIGINT, (__sighandler_t) intParallelHandler);
     // Close what I don't need
     if(i > 0){
         for(size_t j = i; j > 0; j--)
@@ -336,13 +342,12 @@ int execCommandParallel(String cmd, size_t i, Pipes inPipes, Pipes outPipes){
         String s;
         c = ptr_list_index(cmdArray, j - 1);
         string_init(&s, c, strlen(c));
-        int pid;
-        if(has_pipes(s))
+        if(hasPipes(s))
             pid = execCommandPipes(s, j, innerInPipes, innerOutPipes);
         else
             pid = execCommand(s, j, innerInPipes, innerOutPipes);
-        if(pid < 0) intParalelHandler();
-        idx_list_append(PIDS, pid);
+        if(pid < 0) intParallelHandler();
+        idx_list_append(PIDS, (size_t) pid);
         close(pipes_index(innerInPipes, j - 1)[0]);
         close(pipes_index(innerOutPipes, j)[1]);
     }
@@ -372,7 +377,7 @@ int execCommandParallel(String cmd, size_t i, Pipes inPipes, Pipes outPipes){
             LOG_FATAL("Parallel Command failed: ");
             LOG_FATAL(ptr_list_index(cmdArray, k - 1));
             LOG_FATAL("\n");
-            intParalelHandler();
+            intParallelHandler();
             _exit(1);
         }
         idx_list_set(PIDS, k - 1, SIZE_MAX);

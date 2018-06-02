@@ -6,12 +6,30 @@
 #include <string.h>
 #include <ctype.h>
 
+/** The start of the output delimiter */
 #define OUTPUT_START     ">>>"
+/** The end of the output delimiter */
 #define OUTPUT_END       "<<<"
+/** The length of the output begin delimiter */
 #define OUTPUT_START_LEN (1 + strlen(OUTPUT_START) + 1)
+/** The length of the output end delimiter */
 #define OUTPUT_END_LEN   (strlen(OUTPUT_END))
+/**
+ * Check if a string is a output start delimiter.
+ *
+ * \param line The string.
+ * \param len The length of the string.
+ * \returns 1 if true, 0 otherwise.
+ */
 #define IS_OUTPUT_START(line, len) \
     ((len) > 2 && 0 == strncmp(line, OUTPUT_START, 3))
+/**
+ * Check if a string is a output end delimiter.
+ *
+ * \param line The string.
+ * \param len The length of the string.
+ * \returns 1 if true, 0 otherwise.
+ */
 #define IS_OUTPUT_END(line, len)   \
     ((len) > 2 && 0 == strncmp(line, OUTPUT_END, 3))
 
@@ -25,13 +43,11 @@ struct _command{
 };
 
 /* Comments */
-
 typedef struct _comment{
     String comment;
 }* Comment;
 
 /* Nodes */
-
 typedef enum _node_type{
     N_COMMENT,
     N_COMMAND
@@ -46,7 +62,6 @@ typedef struct _parse_tree_node{
 }* Node;
 
 /* Tree */
-
 typedef enum _parse_state{
     OUTPUT_MODE,
     TEXT_MODE
@@ -63,30 +78,95 @@ struct _parse_tree{
 static int LINE_NUMBER;
 /** Global variable to store the current line, needed for error messages*/
 static String CURRENT_LINE;
-
-static Command command_create(char* line, size_t length, size_t dependency);
-
-static void command_destroy(Command c);
-
+/**
+ * Creates a new comment.
+ * @param comment The comment's string.
+ * @return The new comment.
+ */
 static Comment comment_create(String comment);
-
+/**
+ * Dumps the comments string with a new line at the end.
+ * @param c The comment.
+ * @return The comment's string.
+ */
+static String comment_dump(Comment c);
+/**
+ * Frees the memory used my the comment.
+ * @param c The comment to free.
+ */
 static void comment_destroy(Comment c);
-
+/**
+ * Creates a new command.
+ * @param line The command string.
+ * @param length The length of the command string.
+ * @param dependency The dependency number.
+ * @return The new command.
+ */
+static Command command_create(char* line, size_t length, size_t dependency);
+/**
+ * Dumps the command's string and respective output.
+ * @param c The command.
+ * @return The new line terminated string.
+ */
+static String command_dump(Command c);
+/**
+ * Frees the memory used by a command.
+ * @param c The command to free.
+ */
+static void command_destroy(Command c);
+/**
+ * Creates a new parse tree node with a comment.
+ * @param comment The comment.
+ * @return A new parse tree node.
+ */
 static Node tree_node_create_comment(Comment comment);
-
+/**
+ * Creates a new parse tree node with a command.
+ * @param comment The command.
+ * @return A new parse tree node.
+ */
 static Node tree_node_create_command(Command command);
-
+/**
+ * Frees the memory used by a node. Freeing it's comment/command.
+ * @param node The node to free.
+ */
 static void tree_node_destroy(Node node);
-
-static void parse_tree_add_command(ParseTree pt, Command command);
-
+/**
+ * Adds a comment to the tree.
+ * @param pt The parse tree.
+ * @param comment The comment.
+ */
 static void parse_tree_add_comment(ParseTree pt, Comment comment);
-
+/**
+ * Adds a command to the tree.
+ * @param pt The parse tree.
+ * @param command The command.
+ */
+static void parse_tree_add_command(ParseTree pt, Command command);
+/**
+ * Returns a the node <code>dependency</code> nodes before the last one.
+ * @param pt The parse tree to look into.
+ * @param dependency The offset to look at.
+ * @return The node at the given offset or NULL if the offset is invalid.
+ */
+static Node get_dependency_node(ParseTree pt, size_t dependency);
+/**
+ * Chains a command to the batch it depends on
+ * @param pt The parse tree.
+ * @param command The command.
+ * @return 0 if the chainning was successful, 1 otherwise.
+ */
 static int parse_tree_chain_command(ParseTree pt, Command command);
+/**
+ * Parse a command
+ * @param pt The parse tree the command will be added to.
+ * @param line The line to parse
+ * @param length The length of the line.
+ * @return -1 if this command doesn't mark the end of a batch
+ *         or the batch's number if it does.
+ */
+static ssize_t parse_tree_parse_command(ParseTree pt, char* line, size_t length);
 
-static ssize_t parse_tree_parse_command(ParseTree pt,
-                                        char* line,
-                                        size_t length);
 
 ParseTree parse_tree_create(size_t size){
     LINE_NUMBER = 0;
@@ -367,6 +447,7 @@ static void printComment(Comment c);
 static void printNode(Node n);
 
 #include "colors.h"
+
 #include <stdio.h>
 
 void parse_tree_print(ParseTree pt){

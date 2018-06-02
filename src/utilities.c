@@ -6,7 +6,38 @@
 #include <stdio.h>
 #include <string.h>
 
-ssize_t indexOf(const char* str, char c, size_t len){
+/**
+ * Returns the index of a char in a string or -1 if it doesn't occur.
+ * @param str The string.
+ * @param c The character.
+ * @param len The length of the string.
+ * @return The index of a char in a string or -1 if it doesn't occur.
+ */
+static ssize_t indexOf(const char* str, char c, size_t len);
+
+/**
+ * Shifts the contents of a string to the left.
+ * @param str The string.
+ * @param offset The offset to shift from.
+ * @param n The amount of characters to shift.
+ */
+static inline void strShift(char* str, size_t offset, size_t n);
+
+/**
+ * Resets a buffer. Frees the memory and sets it to NULL.
+ * @param buff A pointer to the buffer
+ * @param load The size to be reset.
+ */
+static inline void resetBuff(char** buff, size_t* load);
+
+/**
+ * Counts the amount of digits in an int.
+ * @param n The int
+ * @return The number of digits.
+ */
+static inline size_t countDigits(int n);
+
+static ssize_t indexOf(const char* str, char c, size_t len){
     size_t i = 0;
     while(i < len){
         if(str[i] == c) return i;
@@ -15,17 +46,16 @@ ssize_t indexOf(const char* str, char c, size_t len){
     return -1;
 }
 
-static inline void strshift(char* str, size_t offset, size_t n){
+static void strShift(char* str, size_t offset, size_t n){
     for(size_t i = 0; i < n; i++, offset++)
         str[i] = str[offset];
 }
 
-static inline void resetBuff(char** buff, size_t* load){
+static void resetBuff(char** buff, size_t* load){
     free(*buff);
     *buff = NULL;
     *load = 0;
 }
-
 
 char* readLn(int fd, size_t* nBytes){
     static char* buff;
@@ -43,11 +73,11 @@ char* readLn(int fd, size_t* nBytes){
     }
     ssize_t newLineOffset;
     if((newLineOffset = indexOf(buff, '\n', buffLoad)) < 0){
-        size_t n;
+        ssize_t n;
         while(0 < (n = read(fd, buff + buffLoad, buffSize - buffLoad))){
             char* chunk = buff + buffLoad;
             buffLoad += n;
-            if((newLineOffset = indexOf(chunk, '\n', n)) > -1) break;
+            if((newLineOffset = indexOf(chunk, '\n', (size_t) n)) > -1) break;
             if(buffLoad >= buffSize){
                 buffSize *= 2;
                 buff = realloc(buff, sizeof(char) * buffSize);
@@ -55,9 +85,9 @@ char* readLn(int fd, size_t* nBytes){
         }
     }
     if(newLineOffset > -1){
-        char* ret = str_n_dup(buff, newLineOffset);
-        *nBytes = newLineOffset;
-        strshift(buff, newLineOffset + 1, buffLoad - newLineOffset - 1);
+        char* ret = str_n_dup(buff, (size_t) newLineOffset);
+        *nBytes = (size_t) newLineOffset;
+        strShift(buff, (size_t) (newLineOffset + 1), buffLoad - newLineOffset - 1);
         buffLoad -= (newLineOffset + 1);
         return ret;
     }else{
@@ -89,7 +119,7 @@ char** words(const char* string, size_t len){
     return argv;
 }
 
-static inline size_t countDigits(int n){
+static size_t countDigits(int n){
     size_t count = 0;
     while(n != 0){
         n /= 10;
