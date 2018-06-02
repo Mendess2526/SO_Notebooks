@@ -1,0 +1,12 @@
+Commando para listar os ficheiros
+$ ls
+Grep e word count desta listagem
+$| grep .c & wc
+Quebrar a sequenecia de commandos dependentes
+$ whoami
+Baralhar a listagem e escolher o primeiro elemtento
+$2| shuf | head -1
+Ler e ordenar um ficheiro
+$ sort < colors.h
+Obter a primeira linha
+$| head -1
