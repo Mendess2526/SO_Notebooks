@@ -1,8 +1,9 @@
 Redireciona output:
-$ ls > outLS
+$ mkdir -p outputs
+$| ls > outputs/outLS
 Redireciona input:
 $ wc < /etc/passwd
 Redireciona stderr:
-$ ls /etc/ 2> errLS
+$3| ls /etc/ 2> outputs/errLS
 Redireciona output e stderr:
-$ ls /etc/ &> outAndErrLS
+$4| ls /etc/ &> outputs/outAndErrLS

@@ -85,3 +85,6 @@ cmake-build-debug/
 #doxygen
 doc/html
 doc/latex
+
+#misc
+src/outputs
