@@ -1,6 +1,6 @@
 OS := $(shell uname)
 ifeq ($(OS),Linux)
-    CFLAGS= -D_POSIX_C_SOURCE -g -Wall -Wextra -pedantic -std=c11
+    CFLAGS= -D_POSIX_C_SOURCE -Wall -Wextra -pedantic -std=c11 -O2
 else
     CFLAGS= -g -Wall -Wextra -pedantic -std=c11 -O2
 endif
