@@ -5,6 +5,7 @@
 \usepackage{graphicx}
 \usepackage{indentfirst}
 \usepackage{enumerate}
+\usepackage{subcaption}
 \usepackage{float}
 \usepackage{array}
 \usepackage{tikz}
@@ -315,6 +316,30 @@
                     para o comando \mintinline{text}{whoam}}
     \end{figure}
 
+\chapter{Exemplo de teste}
+    Para exemplificar muitas das funcionalidades do programa foi concebido o
+    seguinte notebook:
+        \begin{figure}[h]%{0.4\textwidth}
+            \centering
+            %\begin{minted}{text}
+            %Commando para listar os processos
+            %$ ps
+            %Grep e word count desta listagem
+            %$| grep notebook & wc
+            %Quebrar a sequenecia de commandos dependentes
+            %$ whoami
+            %Baralhar a listagem e escolher o primeiro elemtento
+            %$2| shuf | head -1
+            %Ler e ordenar um ficheiro
+            %$ sort < colors.h
+            %Obter a ultimas 3 linhas
+            %$| tail -3
+            %\end{minted}
+            \includegraphics[width=0.5\textwidth]{./images/megaNotebookI.png}
+
+            \includegraphics[width=0.45\textwidth]{./images/megaNotebook.png}
+            \caption{Resultado da execução do notebook}
+        \end{figure}
 \chapter{Conclusões e Trabalho Futuro}
     Em suma, o grupo considera que o trabalho foi realizado na sua
     totalidade, de forma estruturada, respondendo a todos os requisitos, e ainda
