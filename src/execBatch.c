@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <stdint.h>
 
 /**
  * Checks if a String contains a '|' character.
@@ -40,7 +41,7 @@ static void cleanCommand(char** words);
  * \param inPipes The pipes where the input comes from.
  * \param outPipes The pipes where the output is writen to.
  */
-static void execCommand(String cmd,
+static int execCommand(String cmd,
                         size_t i,
                         Pipes inPipes,
                         Pipes outPipes);
@@ -53,7 +54,7 @@ static void execCommand(String cmd,
  * \param inPipes The pipes where the input comes from.
  * \param outPipes The pipes where the output is writen to.
  */
-static void execCommandParallel(String cmd,
+static int execCommandParallel(String cmd,
                                 size_t i,
                                 Pipes inPipes,
                                 Pipes outPipes);
@@ -65,7 +66,7 @@ static void execCommandParallel(String cmd,
  * \param inPipes The pipes where the input comes from.
  * \param outPipes The pipes where the output is writen to.
  */
-static void execCommandPipes(String cmd,
+static int execCommandPipes(String cmd,
                              size_t i,
                              Pipes inPipes,
                              Pipes outPipes);
@@ -92,15 +93,20 @@ static void writeToPipes(Command c,
  */
 static void closePipes(Command c, Pipes inPipes, size_t i);
 
+static void killChildren();
+
+static IdxList PIDS;
+
 int execBatch(Command c, int* pipfd, int* pipErr){
     int pid = fork();
     if(pid) return pid;
+    signal(SIGINT, killChildren);
     dup2(pipErr[1], 2);
     close(pipErr[1]);
     close(pipErr[0]);
-    signal(SIGINT, SIG_DFL);
     close(pipfd[0]);
 
+    PIDS = idx_list_create(3);
     Pipes inPipes = pipes_create(3);
     Pipes outPipes = pipes_create(3);
 
@@ -109,12 +115,18 @@ int execBatch(Command c, int* pipfd, int* pipErr){
         if(i > 0) pipes_append(inPipes);
         pipes_append(outPipes);
         String cmd = command_get_command(cur);
+        int pid;
         if(has_parallel(cmd))
-            execCommandParallel(cmd, i, inPipes, outPipes);
+            pid = execCommandParallel(cmd, i, inPipes, outPipes);
         else if(has_pipes(cmd))
-            execCommandPipes(cmd, i, inPipes, outPipes);
+            pid = execCommandPipes(cmd, i, inPipes, outPipes);
         else
-            execCommand(cmd, i, inPipes, outPipes);
+            pid = execCommand(cmd, i, inPipes, outPipes);
+        if(pid < 0){
+            LOG_FATAL("Couldn't fork\n");
+            raise(SIGINT);
+        }
+        idx_list_append(PIDS, pid);
         if(i > 0) close(pipes_index(inPipes, i - 1)[0]);
         close(pipes_index(outPipes, i)[1]);
     }
@@ -138,8 +150,10 @@ int execBatch(Command c, int* pipfd, int* pipErr){
             LOG_FATAL("Command failed: ");
             LOG_FATAL_STRING(command_get_command(cur));
             LOG_FATAL("\n");
+            killChildren();
             _exit(1);
         }
+        idx_list_set(PIDS, i, SIZE_MAX);
         if(write(pipfd[1], "\0", 1) == -1) _exit(-1); //Write the separated '\0'
         if(i < (cmdCount - 1))
             closePipes(cur, inPipes, i); // Close input pipes
@@ -147,6 +161,14 @@ int execBatch(Command c, int* pipfd, int* pipErr){
     pipes_free(inPipes);
     pipes_free(outPipes);
     _exit(0);
+}
+
+void killChildren(){
+    for(size_t i = 0; i < idx_list_len(PIDS); i++){
+        ssize_t pid = idx_list_index(PIDS, i);
+        if(pid > 0 && ((size_t) pid) < SIZE_MAX)
+            kill(pid, SIGINT);
+    }
 }
 
 int has_pipes(String s){
@@ -219,8 +241,10 @@ void cleanCommand(char** words){
     }
 }
 
-void execCommand(String cmd, size_t i, Pipes inPipes, Pipes outPipes){
-    if(fork()) return;
+int execCommand(String cmd, size_t i, Pipes inPipes, Pipes outPipes){
+    int pid = fork();
+    if(pid) return pid;
+    signal(SIGINT, SIG_DFL);
     Redirects redirects = {0};
     command_parse_redirects(&redirects, cmd.s, cmd.length);
     if(redirects.std_in){
@@ -269,9 +293,19 @@ void execCommand(String cmd, size_t i, Pipes inPipes, Pipes outPipes){
     _exit(1);
 }
 
-void execCommandParallel(String cmd, size_t i, Pipes inPipes, Pipes outPipes){
+void intParalelHandler(){
+    killChildren();
+    signal(SIGINT, SIG_DFL);
+    kill(getpid(), SIGINT);
+}
+
+int execCommandParallel(String cmd, size_t i, Pipes inPipes, Pipes outPipes){
+    int pid = fork();
+    if(pid) return pid;
+    idx_list_free(PIDS);
+    PIDS = idx_list_create(2);
+    signal(SIGINT, intParalelHandler);
     // Close what I don't need
-    if(fork()) return;
     if(i > 0){
         for(size_t j = i; j > 0; j--)
             close(pipes_index(inPipes, j - 1)[1]);
@@ -302,10 +336,13 @@ void execCommandParallel(String cmd, size_t i, Pipes inPipes, Pipes outPipes){
         String s;
         c = ptr_list_index(cmdArray, j - 1);
         string_init(&s, c, strlen(c));
+        int pid;
         if(has_pipes(s))
-            execCommandPipes(s, j, innerInPipes, innerOutPipes);
+            pid = execCommandPipes(s, j, innerInPipes, innerOutPipes);
         else
-            execCommand(s, j, innerInPipes, innerOutPipes);
+            pid = execCommand(s, j, innerInPipes, innerOutPipes);
+        if(pid < 0) intParalelHandler();
+        idx_list_append(PIDS, pid);
         close(pipes_index(innerInPipes, j - 1)[0]);
         close(pipes_index(innerOutPipes, j)[1]);
     }
@@ -335,14 +372,17 @@ void execCommandParallel(String cmd, size_t i, Pipes inPipes, Pipes outPipes){
             LOG_FATAL("Parallel Command failed: ");
             LOG_FATAL(ptr_list_index(cmdArray, k - 1));
             LOG_FATAL("\n");
+            intParalelHandler();
             _exit(1);
         }
+        idx_list_set(PIDS, k - 1, SIZE_MAX);
     }
     _exit(0);
 }
 
-void execCommandPipes(String cmd, size_t i, Pipes inPipes, Pipes outPipes){
-    if(fork()) return;
+int execCommandPipes(String cmd, size_t i, Pipes inPipes, Pipes outPipes){
+    int pid = fork();
+    if(pid) return pid;
     if(i > 0){
         dup2(pipes_index(inPipes, i - 1)[0], 0);
         close(pipes_index(inPipes, i - 1)[0]);

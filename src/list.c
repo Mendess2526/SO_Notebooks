@@ -1,4 +1,5 @@
 #include "list.h"
+#include <assert.h>
 
 struct _list{
     size_t* array;
@@ -42,6 +43,11 @@ ssize_t idx_list_find(IdxList l, size_t idx){
     for(i = 0; i < l->load; i++) if(l->array[i] == idx) break;
     if(i == l->load) return -1;
     return i;
+}
+
+void idx_list_set(IdxList l, size_t idx, size_t val){
+    assert(idx < l->load);
+    l->array[idx] = val;
 }
 
 void idx_list_free(IdxList l){

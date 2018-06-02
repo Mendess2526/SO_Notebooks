@@ -57,6 +57,8 @@ size_t idx_list_len(IdxList l);
  */
 ssize_t idx_list_find(IdxList l, size_t idx);
 
+void idx_list_set(IdxList l, size_t idx, size_t val);
+
 /**
  * Free the memory used by this list
  *

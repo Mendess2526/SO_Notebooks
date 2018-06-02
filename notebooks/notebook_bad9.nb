@@ -1,0 +1,5 @@
+LS para dois
+$ ls
+$| grep .c & kek
+Sort
+$| shuf
