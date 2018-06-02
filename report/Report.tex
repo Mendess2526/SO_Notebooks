@@ -90,33 +90,33 @@
         Linha começada por \$ que contém o comando que vai ser executado.
         Este tipo de linha suporta múltiplas opções adicionais.
         \subsection{Pipe para um comando anterior}
-            Se, seguido do \$, estiver um número N e um $|$ o input do comando
-            será obtido do comando que estiver N posições acima no ficheiro.
-            Caso este número seja 1 este pode ser omitido.
+            Se, seguido do \$, estiver um número N e um $|$ o \textit{input} do
+            comando será obtido do comando que estiver N posições acima no
+            ficheiro. Caso este número seja 1 este pode ser omitido.
         \subsection{Pipelining numa só linha}
             Um comando pode ser, na verdade, um encadeamento de vários comandos
             unidos por pipes, por exemplo
             \mintinline{bash}{grep -v ˆ# /etc/passwd | cut -f7 -d: | uniq},
-            neste caso o comportamento é o esperado: O input desta sequência
-            poderá ser obtido de um comando anterior e o seu output
-            redirecionado para um próximo comando no ficheiro.
+            neste caso o comportamento é o esperado: O \textit{input} desta
+            sequência poderá ser obtido de um comando anterior e o seu
+            \textit{output} redirecionado para um próximo comando no ficheiro.
         \subsection{Execução em paralelo}
             Numa só linha começada por \$ vários comandos podem ser executados
-            separados por \&. Neste caso o seu output é misturado
-            indiscriminadamente na sua secção de output. Caso esta linha esteja
-            a receber input de uma anterior, este input é distribuído para
-            todos os comandos separados por \&. Inversamente, caso algum
-            comando esteja a receber o seu input desta linha, este receberá
-            o output de todos os comandos presentes nesta linha também de
-            forma "aleatória".
+            separados por \&. Neste caso o seu \textit{output} é misturado
+            indiscriminadamente na sua secção de \textit{output}. Caso esta
+            linha esteja a receber \textit{input} de uma anterior, este
+            \textit{input} é distribuído para todos os comandos separados por
+            \&. Inversamente, caso algum comando esteja a receber o seu
+            \textit{input} desta linha, este receberá o \textit{output} de todos
+            os comandos presentes nesta linha também de forma "aleatória".
         \subsection{Redirecionamento para ficheiros}
             Uma linha de comando suporta também o Redirecionamento para
             ficheiros usando a sintaxe usual da \textit{bash}:
             \mintinline{bash}{<, >, >>, 2>, &>}.
             Quando este tipo de redirecionado é utilizado, no entanto,
             impossibilita algumas das opções anteriores. Por exemplo,
-            se o output for redirecionado para um ficheiro, nenhum dos comandos
-            seguintes pode depender deste output.
+            se o \textit{output} for redirecionado para um ficheiro, nenhum dos
+            comandos seguintes pode depender deste \textit{output}.
 
 \chapter{Parsing}
     Para fazer o \textit{parsing} do notebook foi concebida uma estrutura
@@ -156,18 +156,18 @@
     A função de cada um dos campos é, respetivamente:
     \begin{itemize}
         \item \mintinline{C}{dependency}: Quantas posições atrás está o comando
-            de cujo output este depende. Se este número for 0 o comando não
-            depende.
+            de cujo \textit{output} este depende. Se este número for 0 o comando
+            não depende.
 
         \item \mintinline{C}{command}: O comando em si. Neste ponto não é
             incluído o \$, o $|$ e/ou números presentes no inicio da linha
             do notebook.
 
-        \item \mintinline{C}{output}: O output deste comando. Inicialmente
-            começa vazio e tem de ser mais tarde preenchido.
+        \item \mintinline{C}{output}: O \textit{output} deste comando.
+            Inicialmente começa vazio e tem de ser mais tarde preenchido.
 
         \item \mintinline{C}{dependants}: O array das posições onde estão os
-            comandos que dependem do output deste.
+            comandos que dependem do \textit{output} deste.
 
         \item \mintinline{C}{pipe}: O apontador para o próximo comando na
             \textbf{Batch}.
@@ -215,30 +215,31 @@
         processo pai cria um filho para cada batch e, de seguida, espera que
         estes morram para receber o resultado acumulado dos comandos
         executados por cada um através de um pipe. A partir deste resultado
-        atualiza o output dos comandos e, por fim, converte a estrutura em
-        texto que escreve no ficheiro.
+        atualiza o \textit{output} dos comandos e, por fim, converte a estrutura
+        em texto que escreve no ficheiro.
 
     \section{Processo Batch}
         Cada filho irá trabalhar sobre um batch (lista ligada de comandos),
         criando um filho para cada nó da lista. Aqui é também decidido o método
         de execução de cada nodo.
         \subsection{Commando simples}
-            Caso seja um comando simples é apenas redirecionado o seu input e
-            output para pipes que comunicam com o processo encarregue do batch a
-            que pertence. Está aqui incluído, também, o redirecionamento para
-            ficheiros, caso seja necessário.
+            Caso seja um comando simples é apenas redirecionado o seu
+            \textit{input} e \textit{output} para pipes que comunicam com o
+            processo encarregue do batch a que pertence. Está aqui incluído,
+            também, o redirecionamento para ficheiros, caso seja necessário.
         \subsection{Commando com pipelines}
-            Caso seja um comando com pipelines, o input e output é redirecionado
-            de forma análoga ao caso anterior e o encadeamento é feito
-            corretamente.
+            Caso seja um comando com pipelines, o \textit{input} e
+            \textit{output} é redirecionado de forma análoga ao caso anterior e
+            o encadeamento é feito corretamente.
         \subsection{Dois ou mais comandos em paralelo}
             Caso o nodo contenha um ou mais comandos separados por \& o
             tratamento é mais complexo. Primeiro, este filho cria um outro
             filho para cada comando que o irá executar com \textit{stdin}
             e \textit{stdout} redirecionados para um pipe cada. Enquanto os
             comandos executam, o pai destes (filho do batch) escreve para todos
-            o input que está a receber do seu pai (batch) e agrega todo o
-            output que lê dos seus filhos e envia-o, também, para o seu pai.
+            o \textit{input} que está a receber do seu pai (batch) e agrega todo
+            o \textit{output} que lê dos seus filhos e envia-o, também, para o
+            seu pai.
 \clearpage
     \section{Ilustração dos processos}
     Para ilustrar este procedimento, um exemplo de como um notebook que é
@@ -268,17 +269,18 @@
         A flag \mintinline{text}{-h} apresenta a lista de opções possiveis
         de passar e termina execução.
     \section{Escrever para o \textit{stdout}}
-        A flag \mintinline{text}{-o} faz com que o output produzido seja
-        impresso para o \textit{standard output} em vez de alterar o ficheiro
-        de origem.
+        A flag \mintinline{text}{-o} faz com que o \textit{output} produzido
+        seja impresso para o \textit{standard output} em vez de alterar o
+        ficheiro de origem.
     \section{Execução sequencial}
         A flag \mintinline{text}{-s} faz com que as batches sejam executadas
         sequencialmente, ou seja, a batch n só é executada quando a batch n-1
         terminar.
     \section{Ler do \textit{stdin}}
-        Se o nome do ficheiro for \mintinline{text}{-} o input do programa será
-        obtido do \textit{standard input} em vez de obtido de um ficheiro. Esta
-        opção automaticamente ativa a opção de escrever para o \textit{stdout}.
+        Se o nome do ficheiro for \mintinline{text}{-} o \textit{input} do
+        programa será obtido do \textit{standard input} em vez de obtido de um
+        ficheiro. Esta opção automaticamente ativa a opção de escrever para o
+        \textit{stdout}.
 
 \chapter{Controlo de erros}
     Durante a fase de \textit{parsing} são detetados os erros de sintaxe que
@@ -294,11 +296,11 @@
     \end{figure}
 
     Durante a execução dos comandos, se algum destes fizer o
-    \mintinline{C}{execvp()} falhar, ou escrever para o strderr, a execução de
-    todos os outros é interrompida e o ficheiro fonte permanece inalterado.
-    A interrupção dos processsos é feita da seguinte forma: Quando um comando
-    falha este alerta o seu pai, que, por sua vez, alerta o seu pai. Este
-    processo repete-se sucessivamente até que o topo da hierarquia seja
+    \mintinline{C}{execvp()} falhar, ou escrever para o \textit{stderr}, a
+    execução de todos os outros é interrompida e o ficheiro fonte permanece
+    inalterado. A interrupção dos processsos é feita da seguinte forma: Quando
+    um comando falha este alerta o seu pai, que, por sua vez, alerta o seu pai.
+    Este processo repete-se sucessivamente até que o topo da hierarquia seja
     alertado. Este sinaliza todos os seus filhos para que matem os seus
     filhos até que todos os processos tenham sido terminados. Atingindo
     este ponto o processo no topo da hierarquia termina a propria execução.
@@ -315,7 +317,7 @@
     totalidade, de forma estruturada, respondendo a todos os requisitos, e ainda
     adicionando requisitos não pedidos explicitamente.
 
-    Um aspeto que poderia ser melhorado era permitir que o output fosse
+    Um aspeto que poderia ser melhorado era permitir que o \textit{output} fosse
     redirecionado de e para ficheiros, sem comprometer as restantes
     funcionalidades. No entanto, esta falha pode ser contornada com as opções
     implementadas, apesar de ser menos eficiente.
